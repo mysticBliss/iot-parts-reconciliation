@@ -488,7 +488,7 @@ with tab_pivot:
             "financial_exposure_usd": "${:,.2f}",
             "lag_sec": "{:.1f}s",
             "accuracy_pct": "{:.1f}%"
-        }).background_gradient(subset=["financial_exposure_usd"], cmap="Reds"),
+        }),
         width="stretch", hide_index=True
     )
 
