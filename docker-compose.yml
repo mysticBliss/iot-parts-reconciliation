@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. Mosquitto MQTT Broker (Local Ingestion Tier)
+  # 1. Mosquitto MQTT Broker (Local Edge Ingestion Tier)
   # ----------------------------------------------------------------------------
   mosquitto:
     image: eclipse-mosquitto:2.0
@@ -65,45 +65,9 @@ services:
     networks:
       - streaming-net
 
-  # ----------------------------------------------------------------------------
-  # 3. PostgreSQL Database (Reconciliation Sink & Superset Warehouse)
-  # ----------------------------------------------------------------------------
-  postgres:
-    image: postgres:15-alpine
-    container_name: reconciliation-postgres
-    restart: unless-stopped
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-reconciliation_db}
-    volumes:
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - pg_data:/var/lib/postgresql/data
-    networks:
-      - streaming-net
-
-  # ----------------------------------------------------------------------------
-  # 4. Apache Superset (Reconciliation Visualizations & Dashboards)
-  # ----------------------------------------------------------------------------
-  superset:
-    image: apache/superset:3.0.0
-    container_name: reconciliation-superset
-    restart: unless-stopped
-    ports:
-      - "${SUPERSET_PORT:-8088}:8088"
-    environment:
-      SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY:-custom_reconciliation_superset_secret_key_2026_xyz}"
-    depends_on:
-      - postgres
-    networks:
-      - streaming-net
-
 volumes:
   mosquitto_data:
   mosquitto_log:
-  pg_data:
 
 networks:
   streaming-net:
