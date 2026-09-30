@@ -1,0 +1,18 @@
+{
+  "name": "mqtt-source-device-counts",
+  "config": {
+    "connector.class": "io.confluent.connect.mqtt.MqttSourceConnector",
+    "tasks.max": "1",
+    "mqtt.server.uri": "tcp://mosquitto:1883",
+    "mqtt.topics": "factory/#",
+    "kafka.topic": "device_counts",
+    "mqtt.qos": "1",
+    "confluent.topic.bootstrap.servers": "${CONFLUENT_BOOTSTRAP_SERVERS}",
+    "confluent.topic.security.protocol": "SASL_SSL",
+    "confluent.topic.sasl.mechanism": "PLAIN",
+    "confluent.topic.sasl.jaas.config": "org.apache.kafka.common.security.plain.PlainLoginModule required username='${CONFLUENT_API_KEY}' password='${CONFLUENT_API_SECRET}';",
+    "confluent.topic.replication.factor": "3",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
+  }
+}

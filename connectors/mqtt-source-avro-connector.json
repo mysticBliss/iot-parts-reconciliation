@@ -1,0 +1,24 @@
+{
+  "name": "mqtt-source-device-counts-avro",
+  "config": {
+    "connector.class": "io.confluent.connect.mqtt.MqttSourceConnector",
+    "tasks.max": "1",
+    "mqtt.server.uris": "tcp://mosquitto:1883",
+    "mqtt.topics": "factory/#",
+    "kafka.topic": "device_counts",
+    "mqtt.qos": "1",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "${SCHEMA_REGISTRY_URL}",
+    "value.converter.basic.auth.credentials.source": "USER_INFO",
+    "value.converter.basic.auth.user.info": "${SCHEMA_REGISTRY_API_KEY}:${SCHEMA_REGISTRY_API_SECRET}",
+    "transforms": "ExtractDeviceKey,AddIngestionTimestamp",
+    "transforms.ExtractDeviceKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.ExtractDeviceKey.fields": "device_id",
+    "transforms.AddIngestionTimestamp.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+    "transforms.AddIngestionTimestamp.timestamp.field": "connect_ingested_at",
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "device_counts_dlq",
+    "errors.deadletterqueue.topic.replication.factor": "3"
+  }
+}

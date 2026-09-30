@@ -1,0 +1,137 @@
+<mxfile host="app.diagrams.net" modified="2026-09-30T12:12:00.000Z" agent="Mozilla/5.0" version="21.0.0" type="device">
+  <diagram id="iot-reconciliation-arch" name="IoT Edge to Cloud Reconciliation Architecture">
+    <mxGraphModel dx="1422" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- BOUNDARY 1: Physical Plant Floor -->
+        <mxCell id="plant-box" value="Plant Floor (Physical Edge Layer)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F8F9FA;strokeColor=#BDC1C6;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="340" height="520" as="geometry" />
+        </mxCell>
+
+        <mxCell id="line1-box" value="Line 1 (Engine Block)&#xa;pi-01, pi-02, pi-03, pi-04" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="line2-box" value="Line 2 (Transmission)&#xa;pi-05, pi-06, pi-07" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="220" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="line3-box" value="Line 3 (Final Assembly)&#xa;pi-08, pi-09, pi-10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="300" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mosquitto" value="&lt;b&gt;Eclipse Mosquitto&lt;/b&gt;&#xa;MQTT Broker (:1883)&#xa;Topics: factory/#" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#D2E3FC;strokeColor=#1967D2;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="85" y="400" width="150" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Edges from Lines to Mosquitto -->
+        <mxCell id="e1" value="MQTT (QoS 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line1-box" target="mosquitto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line2-box" target="mosquitto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line3-box" target="mosquitto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- BOUNDARY 2: Local Docker Ingestion Tier -->
+        <mxCell id="docker-box" value="Self-Managed On-Premise Worker (Docker)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F1F8E9;strokeColor=#7CB342;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="80" width="280" height="520" as="geometry" />
+        </mxCell>
+
+        <mxCell id="connect-worker" value="&lt;b&gt;Kafka Connect Worker&lt;/b&gt;&#xa;(Distributed Mode)&#xa;&#xa;• MQTT Source Connector&#xa;• Key: device_id (SMT)&#xa;• Commit to connect-offsets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEDC8;strokeColor=#558B2F;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="460" y="200" width="220" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mes-sim" value="&lt;b&gt;MES System of Record&lt;/b&gt;&#xa;Simulator (Python)&#xa;Introduces Noise &amp; Drift" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#FBC02D;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="460" y="390" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Edge Mosquitto to Connect -->
+        <mxCell id="e4" value="Sub: factory/#" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#558B2F;strokeWidth=2;" edge="1" parent="1" source="mosquitto" target="connect-worker">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="460" />
+              <mxPoint x="380" y="265" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BOUNDARY 3: Confluent Cloud Managed Service -->
+        <mxCell id="confluent-cloud-box" value="Confluent Cloud (Enterprise Streaming &amp; Analytics)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F3E5F5;strokeColor=#AB47BC;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="80" width="480" height="520" as="geometry" />
+        </mxCell>
+
+        <mxCell id="topic-device" value="&lt;b&gt;Topic: device_counts&lt;/b&gt;&#xa;3 Partitions (Key: device_id)&#xa;&lt;i&gt;&amp;lt;dev&amp;gt;::&amp;lt;line&amp;gt;::&amp;lt;parts&amp;gt;::&amp;lt;ts&amp;gt;&lt;/i&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="790" y="150" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="topic-system" value="&lt;b&gt;Topic: system_counts&lt;/b&gt;&#xa;3 Partitions (Key: device_id)&#xa;&lt;i&gt;System of Record stream&lt;/i&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="790" y="380" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flink-sql" value="&lt;b&gt;Confluent Cloud Flink SQL&lt;/b&gt;&#xa;&#xa;1-Min Tumbling Window&#xa;Stream-to-Stream Join&#xa;&#xa;ON device_id &amp; line &amp; window&#xa;WHERE device_total &lt;&gt; system_total" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;fontStyle=0;fontSize=12;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="240" width="190" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="topic-mismatch" value="&lt;b&gt;Topic: count_mismatches&lt;/b&gt;&#xa;Emits detected discrepancies" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFCDD2;strokeColor=#E53935;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="440" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Edges into Confluent Cloud -->
+        <mxCell id="e5" value="TLS / SASL_PLAIN" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="connect-worker" target="topic-device">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Direct Producer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="mes-sim" target="topic-system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="topic-device" target="flink-sql">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="topic-system" target="flink-sql">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="INSERT INTO" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E53935;strokeWidth=2;" edge="1" parent="1" source="flink-sql" target="topic-mismatch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- BOUNDARY 4: Visualization & Sink Tier -->
+        <mxCell id="viz-box" value="Visualization &amp; Persistence Tier" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#ECEFF1;strokeColor=#78909C;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="80" width="310" height="520" as="geometry" />
+        </mxCell>
+
+        <mxCell id="jdbc-sink" value="&lt;b&gt;JDBC Sink Connector&lt;/b&gt;&#xa;(Self-managed Connect)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="220" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="postgres" value="&lt;b&gt;PostgreSQL DB&lt;/b&gt;&#xa;Table: count_mismatches" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#B0BEC5;strokeColor=#37474F;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="330" width="150" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="superset" value="&lt;b&gt;Apache Superset&lt;/b&gt;&#xa;Discrepancy &amp; Outage Dashboards&#xa;Port :8088" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#FFA000;fontStyle=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1335" y="470" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Sink to Superset -->
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#455A64;strokeWidth=2;" edge="1" parent="1" source="topic-mismatch" target="jdbc-sink">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1250" y="480" />
+              <mxPoint x="1250" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#455A64;strokeWidth=2;" edge="1" parent="1" source="jdbc-sink" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FFA000;strokeWidth=2;" edge="1" parent="1" source="postgres" target="superset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

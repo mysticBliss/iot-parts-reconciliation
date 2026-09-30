@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "PartProductionEvent",
+  "namespace": "com.factory.reconciliation",
+  "doc": "Enterprise IoT Telemetry record emitted when a factory machine manufactures a unit",
+  "fields": [
+    {
+      "name": "device_id",
+      "type": "string",
+      "doc": "Unique machine identifier e.g. pi-01"
+    },
+    {
+      "name": "line",
+      "type": "string",
+      "doc": "Assembly line designation e.g. line1, line2, line3"
+    },
+    {
+      "name": "parts",
+      "type": "int",
+      "default": 1,
+      "doc": "Batch or unit count increment"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "default": "RUNNING",
+      "doc": "Operational state: RUNNING, PAUSED, MAINTENANCE, OUTAGE"
+    },
+    {
+      "name": "ts",
+      "type": "string",
+      "doc": "ISO-8601 UTC event generation timestamp"
+    }
+  ]
+}

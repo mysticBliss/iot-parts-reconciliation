@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Mosquitto MQTT Broker (Local Ingestion Tier)
+  # ----------------------------------------------------------------------------
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto-broker
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - streaming-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Self-Managed Kafka Connect Worker (Distributed Mode to Confluent Cloud)
+  # ----------------------------------------------------------------------------
+  kafka-connect:
+    build:
+      context: ./connect
+      dockerfile: Dockerfile
+    container_name: kafka-connect-worker
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "${CONFLUENT_BOOTSTRAP_SERVERS}"
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: "iot-connect-cluster"
+      CONNECT_CONFIG_STORAGE_TOPIC: "_iot-connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "_iot-connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "_iot-connect-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      
+      # Confluent Cloud Security Configuration (SASL_SSL)
+      CONNECT_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_SASL_MECHANISM: "PLAIN"
+      CONNECT_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username='${CONFLUENT_API_KEY}' password='${CONFLUENT_API_SECRET}';"
+      
+      # Producer Security for Connect Worker
+      CONNECT_PRODUCER_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_PRODUCER_SASL_MECHANISM: "PLAIN"
+      CONNECT_PRODUCER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username='${CONFLUENT_API_KEY}' password='${CONFLUENT_API_SECRET}';"
+      
+      # Consumer Security for Connect Worker
+      CONNECT_CONSUMER_SECURITY_PROTOCOL: "SASL_SSL"
+      CONNECT_CONSUMER_SASL_MECHANISM: "PLAIN"
+      CONNECT_CONSUMER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username='${CONFLUENT_API_KEY}' password='${CONFLUENT_API_SECRET}';"
+    depends_on:
+      - mosquitto
+    networks:
+      - streaming-net
+
+  # ----------------------------------------------------------------------------
+  # 3. PostgreSQL Database (Reconciliation Sink & Superset Warehouse)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: reconciliation-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-reconciliation_db}
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - streaming-net
+
+  # ----------------------------------------------------------------------------
+  # 4. Apache Superset (Reconciliation Visualizations & Dashboards)
+  # ----------------------------------------------------------------------------
+  superset:
+    image: apache/superset:3.0.0
+    container_name: reconciliation-superset
+    restart: unless-stopped
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    environment:
+      SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY:-custom_reconciliation_superset_secret_key_2026_xyz}"
+    depends_on:
+      - postgres
+    networks:
+      - streaming-net
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
+  pg_data:
+
+networks:
+  streaming-net:
+    driver: bridge
