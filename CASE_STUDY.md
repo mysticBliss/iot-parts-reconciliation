@@ -3,7 +3,7 @@
 ## Quick Facts
 - **Role:** Lead Data / Streaming Architect & Engineer
 - **Domain:** Industrial IoT, Discrete Manufacturing (Automotive Assembly)
-- **Tech Stack:** Confluent Cloud (Kafka, Flink SQL, Schema Registry), Apache Kafka Connect, Eclipse Mosquitto (MQTT), PostgreSQL, Apache Superset, Docker, Python
+- **Tech Stack:** Confluent Cloud (Kafka, Flink SQL, Schema Registry), Apache Kafka Connect, Eclipse Mosquitto (MQTT), Streamlit, Docker, Python
 - **Key Outcome:** Sub-second continuous discrepancy detection across distributed edge machinery vs. enterprise MES records, replacing legacy 4-hour batch reconciliation cycles with 1-minute event-time tumbling windows.
 
 ---
@@ -19,8 +19,8 @@ This project delivers a **cloud-native, event-driven streaming pipeline** that c
                                                                                       │
                                   [Enterprise MES SOR] ────────(Direct Cloud)────────┤
                                                                                       ▼
-[Superset Dashboard] ◀── [PostgreSQL Warehouse] ◀── [JDBC Sink] ◀── [Confluent Flink SQL Engine]
-                                                                     (1-Min Tumbling Window Reconciler)
+                    [Streamlit Dashboard] ◀─────────────────── [Confluent Flink SQL Engine]
+                                                                (1-Min Tumbling Window Reconciler)
 ```
 
 ---
@@ -50,7 +50,7 @@ Automotive and discrete manufacturing facilities face severe challenges reconcil
 | **Edge-to-Cloud Bridge** | Self-Managed Kafka Connect Worker (Distributed) | Custom bridge script, Cloud-managed connector | Cost efficiency, SASL_SSL authentication to Confluent Cloud, low-latency connector plugin execution. |
 | **Serialization & Contract** | Apache Avro + Confluent Schema Registry | Raw JSON, Protobuf | Compact binary wire format (5-byte header with schema ID), forward/backward compatibility, native Flink SQL schema inference. |
 | **Stream Processing Engine** | Confluent Cloud Flink SQL | Spark Streaming, ksqlDB | True streaming event-time semantics, first-class tumbling window joins, serverless auto-scaling on Confluent Cloud. |
-| **Discrepancy Sink** | Confluent JDBC Sink to PostgreSQL + Apache Superset | Elasticsearch, InfluxDB | Structured relational storage for audit logging, seamless SQL querying, and real-time visualization in Superset. |
+| **Discrepancy Surface** | Flink analytics views read into a Streamlit dashboard | JDBC sink to PostgreSQL + Superset (built first), Elasticsearch, InfluxDB | The relational hop added a persistence tier and a second container stack without changing what the operator sees. Shaping the output in Flink views and rendering it directly removed Postgres and Superset from the runtime entirely. |
 
 ---
 
@@ -122,16 +122,22 @@ A dedicated simulation suite stress-tests edge network drops:
 
 ## 5. Visualizations & Key Operational Insights from Data
 
-The persisted discrepancies in PostgreSQL feed directly into an **Apache Superset** operational dashboard designed for plant managers and QA engineers.
+The reconciliation output is surfaced in a **Streamlit** operational dashboard designed
+for plant managers and QA engineers, deployed on Streamlit Community Cloud:
 
-![Operational Dashboard Preview](./docs/images/dashboard_overview.png)
-*Figure 1: Real-Time IoT Reconciliation Dashboard in Apache Superset showing live discrepancies, hourly drift trends, and machine-level error rates.*
+**[View the dashboard](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)**
+
+The hosted dashboard does not hold an open Kafka consumer — running a Confluent Cloud
+cluster and a local Connect worker continuously is not viable for a public demo. It
+renders the reconciliation output the Flink views produce, reproduced from the
+deterministic fault timetable below. Point it at a running local stack and it shows that
+cluster's own output.
 
 ### Automated Hourly Glitch Schedule (Ground Truth vs. Detected Discrepancies)
 
-To enable reproducible benchmarking and dashboard verification, the simulator runs an automated **hourly fault timetable**. You know the ground truth in advance to validate against Apache Superset:
+To enable reproducible benchmarking and dashboard verification, the simulator runs an automated **hourly fault timetable**. Because the faults are scheduled, the ground truth is known in advance and the dashboard can be checked against it:
 
-| Minute Window (Every Hour) | Target Machine & Line | Injected Fault Scenario | Real-World Root Cause | Superset Indicator |
+| Minute Window (Every Hour) | Target Machine & Line | Injected Fault Scenario | Real-World Root Cause | Dashboard Indicator |
 | :--- | :--- | :--- | :--- | :--- |
 | **MM:05 - MM:08** | `pi-02` (Line 1 - Engine) | **Double-Bounce** (`parts: 2-3`) | Mechanical switch vibration / glare | Positive variance spike (`+1` to `+2`) |
 | **MM:15 - MM:18** | `pi-06` (Line 2 - Transmission) | **Missed Pulse** (`parts: 0`) | Optical sensor lens fogging / slip | Negative variance spike (`-1`) |
@@ -169,9 +175,6 @@ To enable reproducible benchmarking and dashboard verification, the simulator ru
 - **Query / Chart:** Time-series line chart tracking aggregate hourly `discrepancy` against the total production run.
 - **Operational Value:** Establishes shift-by-shift baseline reliability metrics and flags anomalous bursts during shift handover windows.
 
-![Discrepancy Drift Analysis](./docs/images/discrepancy_drift_chart.png)
-*Figure 2: Real-time discrepancy drift per device over 1-minute tumbling intervals.*
-
 ---
 
 ## 6. Results & Operational Impact
@@ -181,7 +184,7 @@ To enable reproducible benchmarking and dashboard verification, the simulator ru
 | **Discrepancy Detection Latency** | ~4 hours (Micro-batch) | **< 60 seconds** (1-min tumbling window) | **> 99% reduction** |
 | **Payload Wire Size** | ~180 bytes / record (JSON) | **~38 bytes / record (Avro binary)** | **~78% bandwidth savings** |
 | **Schema Validation** | Ad-hoc runtime application logic | **Compile/Ingest-time Schema Registry enforcement** | **Zero runtime parse failures** |
-| **Infrastructure Overhead** | Dedicated NiFi & Spark cluster maintenance | **Serverless Confluent Flink + Lightweight Connect** | **~60% lower maintenance effort** |
+| **Runtime Footprint** | Dedicated NiFi & Spark cluster maintenance | **Serverless Confluent Flink + a single Connect container** | Two long-running containers replaced by one, with stateful compute offloaded to Confluent Cloud |
 
 ---
 
@@ -199,9 +202,9 @@ To enable reproducible benchmarking and dashboard verification, the simulator ru
 ---
 
 - [x] **Architecture Diagrams (HLD & LLD):** [architecture.drawio](./architecture.drawio)
-  - **Page 1 (HLD):** End-to-End Enterprise Flow (Edge Machinery -> Mosquitto -> Kafka Connect -> Confluent Cloud Flink -> Postgres -> Superset)
-  - **Page 2 (LLD):** Internal Component Deep Dive (MQTT Delimited Payload -> SMT -> AvroConverter + Schema Registry Magic Byte Header -> Watermarked Flink Dual Tumbling Join -> PostgreSQL Table Schema)
+  - **Page 1 (HLD):** End-to-End Enterprise Flow (Edge Machinery -> Mosquitto -> Kafka Connect -> Confluent Cloud Flink -> Streamlit)
+  - **Page 2 (LLD):** Internal Component Deep Dive (MQTT Delimited Payload -> SMT -> AvroConverter + Schema Registry Magic Byte Header -> Watermarked Flink Dual Tumbling Join -> Analytics Views)
 - [x] **Technical Documentation:** [README.md](./README.md) & [LEARNING.md](./LEARNING.md)
 - [x] **Source Code & Flink Queries:** [flink_sql/](./flink_sql/) & [simulators/](./simulators/)
-- [x] **Dashboard Screenshots:** [Dashboard Overview](./docs/images/dashboard_overview.png) & [Discrepancy Chart](./docs/images/discrepancy_drift_chart.png)
+- [x] **Live Dashboard:** [iot-parts-reconciliation.streamlit.app](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)
 

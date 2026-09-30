@@ -1,7 +1,10 @@
 """
 IoT Edge-to-Cloud Discrete Manufacturing Parts Reconciliation Platform
 Enterprise-Grade Telemetry & Stream Processing Analytics Suite
-Source: Confluent Cloud Kafka, Schema Registry & Apache Flink SQL
+Renders the reconciliation output of the Confluent Cloud Flink SQL views
+(flink_sql/06_streamlit_analytics_views.sql). The hosted deployment reproduces the
+simulators' deterministic fault timetable rather than holding an open Kafka consumer,
+so the demo does not depend on a continuously running cluster. See README.md §2.
 """
 
 import os
@@ -254,14 +257,15 @@ PAPER_BG = "#090d16"
 GRID_COLOR = "#1e293b"
 
 # Tab Navigation
-tab_stream, tab_operations, tab_financial, tab_physics, tab_heat, tab_pivot, tab_feed = st.tabs([
+tab_stream, tab_operations, tab_financial, tab_physics, tab_heat, tab_pivot, tab_feed, tab_arch = st.tabs([
     "Production Stream",
     "Manufacturing Operations",
     "Financial Valuation",
     "Ingestion Latency",
     "Fleet Heatmap",
     "Pivot Matrix",
-    "Audit Log"
+    "Audit Log",
+    "Pipeline Architecture"
 ])
 
 # --- TAB 1: Stream Analysis ---
@@ -516,6 +520,75 @@ with tab_feed:
         )
     else:
         st.success("No active discrepancies in the current operational window.")
+
+# --- TAB 8: End-to-End Pipeline Architecture ---
+with tab_arch:
+    st.markdown('<div class="section-heading">End-to-End Streaming & Storage Topology</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+```
+ ┌────────────────────────┐      ┌────────────────────────┐
+ │   Edge Telemetry       │      │   Cloud System         │
+ │   Physical Machines    │      │   of Record (MES)      │
+ │   (10 Sensor Units)    │      │   (Planned Baseline)   │
+ └───────────┬────────────┘      └───────────┬────────────┘
+             │ MQTT Protocol                 │ REST / Event Hub
+             ▼                               ▼
+ ┌────────────────────────┐      ┌────────────────────────┐
+ │  Mosquitto MQTT Broker │      │  Kafka Connect Engine  │
+ │  (Edge Gateway)        │      │  (Confluent / Managed) │
+ └───────────┬────────────┘      └───────────┬────────────┘
+             │ MQTT Source Connector         │
+             └───────────────┬───────────────┘
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │      Apache Kafka / Confluent Cloud Streaming Core     │
+ │  • Topic: device_counts (Physical edge pulses)         │
+ │  • Topic: system_counts (Enterprise MES baseline)      │
+ │  • Topic: enriched_reconciliation (Enriched stream)    │
+ └───────────────────────────┬────────────────────────────┘
+                             │
+                             ▼
+ ┌────────────────────────────────────────────────────────┐
+ │      Apache Flink SQL Continuous Analytics Engine      │
+ │  • 1-Minute Tumbling Windows (`TUMBLE(event_time)`)   │
+ │  • Temporal Join: `v_dim_equipment FOR SYSTEM_TIME AS` │
+ │  • Complex Event Processing (`MATCH_RECOGNIZE`)        │
+ │  • Watermarking (`WATERMARK FOR event_time AS ...`)    │
+ └─────────────┬────────────────────────────┬─────────────┘
+               │                            │
+               ▼ Upsert Stream              ▼ Direct View Stream
+ ┌───────────────────────────┐  ┌───────────────────────────┐
+ │   PostgreSQL Sink Engine  │  │    Streamlit Dashboard    │
+ │   (JDBC Upsert Sink)      │  │    (Real-Time Analytics   │
+ │ • Dimensional Analytics   │  │  & Interactive Monitoring)│
+ │ • Persistent Audit Log    │  └───────────────────────────┘
+ └───────────────────────────┘
+```
+    """)
+
+    col_arch1, col_arch2 = st.columns(2)
+    with col_arch1:
+        st.markdown("#### Real-Time Streaming Ingestion & Processing")
+        st.markdown("""
+- **MQTT Edge Layer**: Mosquitto Edge broker ingests optical pulses and inductive sensor counts across 10 machines (`pi-01` to `pi-10`) over 3 manufacturing lines.
+- **Kafka Connect Ingress**: Consumes edge MQTT topics (`factory/+/+/parts`) and serializes into Confluent Kafka topics (`device_counts`, `system_counts`).
+- **Apache Flink SQL**:
+  - Performs 1-minute tumbling window aggregations with deterministic event-time watermarking.
+  - Executes temporal table joins against dimensional metadata tables (`v_dim_equipment`).
+  - Detects sensor bounce chatter, missed optical pulses, and post-outage burst flushes via `MATCH_RECOGNIZE`.
+        """)
+
+    with col_arch2:
+        st.markdown("#### Persistence & Analytical Delivery")
+        st.markdown("""
+- **PostgreSQL JDBC Sink**:
+  - Flink SQL streams reconciled mismatch events directly to a PostgreSQL relational warehouse using the JDBC Sink connector.
+  - Provides indexed persistence for historical querying, Root Cause Analysis (RCA), and compliance audit trails.
+- **Interactive Streamlit UI**:
+  - Serves live metrics, spatial-temporal heatmaps, and financial exposure evaluations.
+  - Operates autonomously with live stream simulation when offline or in cloud-native sandbox mode.
+        """)
 
 # Auto-refresh loop
 if auto_refresh:
