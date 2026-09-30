@@ -1,134 +1,236 @@
-<mxfile host="app.diagrams.net" modified="2026-09-30T12:12:00.000Z" agent="Mozilla/5.0" version="21.0.0" type="device">
-  <diagram id="iot-reconciliation-arch" name="IoT Edge to Cloud Reconciliation Architecture">
-    <mxGraphModel dx="1422" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2026-09-30T14:00:00.000Z" agent="Mozilla/5.0" version="21.0.0" type="device">
+  <!-- ========================================================================================= -->
+  <!-- PAGE 1: HIGH-LEVEL ARCHITECTURE (HLD)                                                    -->
+  <!-- ========================================================================================= -->
+  <diagram id="iot-reconciliation-hld" name="High-Level Architecture (HLD)">
+    <mxGraphModel dx="1600" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <!-- BOUNDARY 1: Physical Plant Floor -->
-        <mxCell id="plant-box" value="Plant Floor (Physical Edge Layer)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F8F9FA;strokeColor=#BDC1C6;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="340" height="520" as="geometry" />
+        <!-- TITLE BAR -->
+        <mxCell id="hld-title" value="&lt;b style='font-size: 18px;'&gt;IoT Edge-to-Cloud Real-Time Discrepancy Reconciliation Engine&lt;/b&gt;&lt;br&gt;&lt;span style='font-size: 12px; color: #555;'&gt;High-Level System Architecture (HLD) — Enterprise Hybrid Event-Driven Stream Processing&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1A73E8;strokeWidth=2;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="1680" height="60" as="geometry" />
         </mxCell>
 
-        <mxCell id="line1-box" value="Line 1 (Engine Block)&#xa;pi-01, pi-02, pi-03, pi-04" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="140" width="200" height="60" as="geometry" />
+        <!-- ZONE 1: Physical Plant Floor -->
+        <mxCell id="hld-zone1" value="Zone 1: Physical Manufacturing Plant Floor (Edge Tier)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#F8F9FA;strokeColor=#4285F4;strokeWidth=2;dashed=1;dashPattern=6 4;spacingTop=12;align=left;spacingLeft=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="340" height="740" as="geometry" />
         </mxCell>
 
-        <mxCell id="line2-box" value="Line 2 (Transmission)&#xa;pi-05, pi-06, pi-07" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="220" width="200" height="60" as="geometry" />
+        <mxCell id="hld-line1" value="&lt;b&gt;Assembly Line 1 (Engine Block)&lt;/b&gt;&lt;br&gt;Devices: &lt;code&gt;pi-01, pi-02, pi-03, pi-04&lt;/code&gt;&lt;br&gt;Output: Optical Sensor Pulse counts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=11;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="65" y="160" width="290" height="65" as="geometry" />
         </mxCell>
 
-        <mxCell id="line3-box" value="Line 3 (Final Assembly)&#xa;pi-08, pi-09, pi-10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#4285F4;fontStyle=0;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="60" y="300" width="200" height="60" as="geometry" />
+        <mxCell id="hld-line2" value="&lt;b&gt;Assembly Line 2 (Transmission)&lt;/b&gt;&lt;br&gt;Devices: &lt;code&gt;pi-05, pi-06, pi-07&lt;/code&gt;&lt;br&gt;Output: Proximity Sensor Pulse counts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=11;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="65" y="245" width="290" height="65" as="geometry" />
         </mxCell>
 
-        <mxCell id="mosquitto" value="&lt;b&gt;Eclipse Mosquitto&lt;/b&gt;&#xa;MQTT Broker (:1883)&#xa;Topics: factory/#" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#D2E3FC;strokeColor=#1967D2;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="85" y="400" width="150" height="120" as="geometry" />
+        <mxCell id="hld-line3" value="&lt;b&gt;Assembly Line 3 (Final Assembly)&lt;/b&gt;&lt;br&gt;Devices: &lt;code&gt;pi-08, pi-09, pi-10&lt;/code&gt;&lt;br&gt;Output: Laser Inspection Pulse counts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F0FE;strokeColor=#1A73E8;fontSize=11;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="65" y="330" width="290" height="65" as="geometry" />
         </mxCell>
 
-        <!-- Edges from Lines to Mosquitto -->
-        <mxCell id="e1" value="MQTT (QoS 1)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line1-box" target="mosquitto">
+        <mxCell id="hld-mosquitto" value="&lt;b style='font-size:13px;'&gt;Eclipse Mosquitto Broker&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Port: &lt;b&gt;:1883&lt;/b&gt; (TCP MQTT)&lt;br&gt;• Wildcard Topic: &lt;code&gt;factory/#&lt;/code&gt;&lt;br&gt;• Delivery: &lt;b&gt;QoS 1&lt;/b&gt; (At-Least-Once)&lt;br&gt;• Max In-flight: 1000 msgs" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#D2E3FC;strokeColor=#185ABC;fontSize=11;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="90" y="440" width="240" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hld-outage-box" value="&lt;b&gt;Network Outage Resilience&lt;/b&gt;&lt;br&gt;• Local in-memory FIFO buffer&lt;br&gt;• Automatic burst replay on reconnect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=10;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="65" y="630" width="290" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Zone 1 -->
+        <mxCell id="hld-e1" value="Pub QoS 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1A73E8;strokeWidth=2;" edge="1" parent="1" source="hld-line1" target="hld-mosquitto">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line2-box" target="mosquitto">
+        <mxCell id="hld-e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1A73E8;strokeWidth=2;" edge="1" parent="1" source="hld-line2" target="hld-mosquitto">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1967D2;strokeWidth=2;" edge="1" parent="1" source="line3-box" target="mosquitto">
+        <mxCell id="hld-e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1A73E8;strokeWidth=2;" edge="1" parent="1" source="hld-line3" target="hld-mosquitto">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- BOUNDARY 2: Local Docker Ingestion Tier -->
-        <mxCell id="docker-box" value="Self-Managed On-Premise Worker (Docker)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F1F8E9;strokeColor=#7CB342;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="430" y="80" width="280" height="520" as="geometry" />
+        <!-- ZONE 2: Local Docker Ingestion Tier -->
+        <mxCell id="hld-zone2" value="Zone 2: On-Premise Gateway &amp; Ingestion (Docker)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#F1F8E9;strokeColor=#33691E;strokeWidth=2;dashed=1;dashPattern=6 4;spacingTop=12;align=left;spacingLeft=15;" vertex="1" parent="1">
+          <mxGeometry x="415" y="110" width="310" height="740" as="geometry" />
         </mxCell>
 
-        <mxCell id="connect-worker" value="&lt;b&gt;Kafka Connect Worker&lt;/b&gt;&#xa;(Distributed Mode)&#xa;&#xa;• MQTT Source Connector&#xa;• Key: device_id (SMT)&#xa;• Commit to connect-offsets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEDC8;strokeColor=#558B2F;fontSize=12;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="460" y="200" width="220" height="130" as="geometry" />
+        <mxCell id="hld-connect" value="&lt;b style='font-size:13px;'&gt;Kafka Connect Cluster&lt;/b&gt;&lt;br&gt;&lt;span style='color:#2E7D32;'&gt;(Distributed Container :8083)&lt;/span&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;MQTT Source Connector&lt;/b&gt;&lt;br&gt;• Schema Registry Avro Converter&lt;br&gt;• Single Message Transform (SMT)&lt;br&gt;• SASL_SSL Cloud Uplink" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEDC8;strokeColor=#33691E;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="440" y="190" width="260" height="170" as="geometry" />
         </mxCell>
 
-        <mxCell id="mes-sim" value="&lt;b&gt;MES System of Record&lt;/b&gt;&#xa;Simulator (Python)&#xa;Introduces Noise &amp; Drift" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#FBC02D;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="460" y="390" width="220" height="70" as="geometry" />
+        <mxCell id="hld-mes" value="&lt;b style='font-size:13px;'&gt;Enterprise MES Publisher&lt;/b&gt;&lt;br&gt;&lt;span style='color:#F57F17;'&gt;(System of Record SOR)&lt;/span&gt;&lt;br&gt;&lt;br&gt;• ERP/MES Batch Aggregator&lt;br&gt;• Direct Confluent Cloud Producer&lt;br&gt;• Simulates production anomalies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F57F17;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="440" y="470" width="260" height="150" as="geometry" />
         </mxCell>
 
-        <!-- Edge Mosquitto to Connect -->
-        <mxCell id="e4" value="Sub: factory/#" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#558B2F;strokeWidth=2;" edge="1" parent="1" source="mosquitto" target="connect-worker">
+        <!-- Edges Zone 1 -> Zone 2 -->
+        <mxCell id="hld-e4" value="MQTT Sub: factory/#" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2E7D32;strokeWidth=2;" edge="1" parent="1" source="hld-mosquitto" target="hld-connect">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="380" y="460" />
-              <mxPoint x="380" y="265" />
+              <mxPoint x="380" y="515" />
+              <mxPoint x="380" y="275" />
             </Array>
           </mxGeometry>
         </mxCell>
 
-        <!-- BOUNDARY 3: Confluent Cloud Managed Service -->
-        <mxCell id="confluent-cloud-box" value="Confluent Cloud (Enterprise Streaming &amp; Analytics)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#F3E5F5;strokeColor=#AB47BC;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="760" y="80" width="480" height="520" as="geometry" />
+        <!-- ZONE 3: Confluent Cloud -->
+        <mxCell id="hld-zone3" value="Zone 3: Confluent Cloud (Fully Managed Streaming &amp; Analytics)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#F3E5F5;strokeColor=#4A148C;strokeWidth=2;dashed=1;dashPattern=6 4;spacingTop=12;align=left;spacingLeft=15;" vertex="1" parent="1">
+          <mxGeometry x="760" y="110" width="530" height="740" as="geometry" />
         </mxCell>
 
-        <mxCell id="topic-device" value="&lt;b&gt;Topic: device_counts&lt;/b&gt;&#xa;3 Partitions (Key: device_id)&#xa;&lt;i&gt;&amp;lt;dev&amp;gt;::&amp;lt;line&amp;gt;::&amp;lt;parts&amp;gt;::&amp;lt;ts&amp;gt;&lt;/i&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="790" y="150" width="180" height="90" as="geometry" />
+        <mxCell id="hld-sr" value="&lt;b style='font-size:12px;'&gt;Confluent Schema Registry&lt;/b&gt;&lt;br&gt;Contract: &lt;code&gt;part_event.avsc&lt;/code&gt;&lt;br&gt;Enforces Schema Evolution &amp; Types" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#F8BBD0;strokeColor=#AD1457;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="790" y="160" width="210" height="80" as="geometry" />
         </mxCell>
 
-        <mxCell id="topic-system" value="&lt;b&gt;Topic: system_counts&lt;/b&gt;&#xa;3 Partitions (Key: device_id)&#xa;&lt;i&gt;System of Record stream&lt;/i&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#8E24AA;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="790" y="380" width="180" height="90" as="geometry" />
+        <mxCell id="hld-topic-dev" value="&lt;b&gt;Topic: `device_counts`&lt;/b&gt;&lt;br&gt;• 3 Partitions | Key: &lt;code&gt;device_id&lt;/code&gt;&lt;br&gt;• Format: &lt;b&gt;Avro Binary&lt;/b&gt; + Schema ID&lt;br&gt;• Retention: 7 Days" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#6A1B9A;fontSize=11;spacing=4;align=left;" vertex="1" parent="1">
+          <mxGeometry x="790" y="270" width="210" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="flink-sql" value="&lt;b&gt;Confluent Cloud Flink SQL&lt;/b&gt;&#xa;&#xa;1-Min Tumbling Window&#xa;Stream-to-Stream Join&#xa;&#xa;ON device_id &amp; line &amp; window&#xa;WHERE device_total &lt;&gt; system_total" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#6A1B9A;fontStyle=0;fontSize=12;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1020" y="240" width="190" height="150" as="geometry" />
+        <mxCell id="hld-topic-sys" value="&lt;b&gt;Topic: `system_counts`&lt;/b&gt;&lt;br&gt;• 3 Partitions | Key: &lt;code&gt;device_id&lt;/code&gt;&lt;br&gt;• Format: &lt;b&gt;JSON / Avro&lt;/b&gt;&lt;br&gt;• Retention: 7 Days" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#E1BEE7;strokeColor=#6A1B9A;fontSize=11;spacing=4;align=left;" vertex="1" parent="1">
+          <mxGeometry x="790" y="470" width="210" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="topic-mismatch" value="&lt;b&gt;Topic: count_mismatches&lt;/b&gt;&#xa;Emits detected discrepancies" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFCDD2;strokeColor=#E53935;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1025" y="440" width="180" height="80" as="geometry" />
+        <mxCell id="hld-flink" value="&lt;b style='font-size:13px;'&gt;Confluent Cloud Flink SQL Engine&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;1-Minute Tumbling Windows&lt;/b&gt; on &lt;code&gt;event_time&lt;/code&gt;&lt;br&gt;• 5-Second Watermark Delay Tolerance&lt;br&gt;• Dual Stream Group Aggregation&lt;br&gt;• &lt;b&gt;Stream-to-Stream Full Outer Discrepancy Join&lt;/b&gt;&lt;br&gt;• Filters &lt;code&gt;device_total != system_total&lt;/code&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CE93D8;strokeColor=#4A148C;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="270" width="230" height="200" as="geometry" />
         </mxCell>
 
-        <!-- Edges into Confluent Cloud -->
-        <mxCell id="e5" value="TLS / SASL_PLAIN" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="connect-worker" target="topic-device">
+        <mxCell id="hld-topic-mismatch" value="&lt;b&gt;Topic: `count_mismatches`&lt;/b&gt;&lt;br&gt;• Stream of Reconciled Anomalies&lt;br&gt;• Variance, window_start, device_id" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFCDD2;strokeColor=#C62828;fontSize=11;spacing=4;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="560" width="220" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Zone 2 -> Zone 3 -->
+        <mxCell id="hld-e5" value="Avro + SASL_SSL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="hld-connect" target="hld-topic-dev">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e6" value="Direct Producer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8E24AA;strokeWidth=2;" edge="1" parent="1" source="mes-sim" target="topic-system">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="topic-device" target="flink-sql">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="topic-system" target="flink-sql">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e9" value="INSERT INTO" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E53935;strokeWidth=2;" edge="1" parent="1" source="flink-sql" target="topic-mismatch">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- BOUNDARY 4: Visualization & Sink Tier -->
-        <mxCell id="viz-box" value="Visualization &amp; Persistence Tier" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=14;fillColor=#ECEFF1;strokeColor=#78909C;dashed=1;dashPattern=8 8;spacingTop=10;" vertex="1" parent="1">
-          <mxGeometry x="1290" y="80" width="310" height="520" as="geometry" />
-        </mxCell>
-
-        <mxCell id="jdbc-sink" value="&lt;b&gt;JDBC Sink Connector&lt;/b&gt;&#xa;(Self-managed Connect)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#455A64;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="1335" y="220" width="220" height="60" as="geometry" />
-        </mxCell>
-
-        <mxCell id="postgres" value="&lt;b&gt;PostgreSQL DB&lt;/b&gt;&#xa;Table: count_mismatches" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#B0BEC5;strokeColor=#37474F;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="1370" y="330" width="150" height="90" as="geometry" />
-        </mxCell>
-
-        <mxCell id="superset" value="&lt;b&gt;Apache Superset&lt;/b&gt;&#xa;Discrepancy &amp; Outage Dashboards&#xa;Port :8088" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#FFA000;fontStyle=0;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="1335" y="470" width="220" height="70" as="geometry" />
-        </mxCell>
-
-        <!-- Edges Sink to Superset -->
-        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#455A64;strokeWidth=2;" edge="1" parent="1" source="topic-mismatch" target="jdbc-sink">
+        <mxCell id="hld-e6" value="Schema Query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#AD1457;strokeWidth=1;dashed=1;" edge="1" parent="1" source="hld-connect" target="hld-sr">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1250" y="480" />
-              <mxPoint x="1250" y="250" />
+              <mxPoint x="740" y="230" />
+              <mxPoint x="740" y="200" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#455A64;strokeWidth=2;" edge="1" parent="1" source="jdbc-sink" target="postgres">
+        <mxCell id="hld-e7" value="Direct Producer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6A1B9A;strokeWidth=2;" edge="1" parent="1" source="hld-mes" target="hld-topic-sys">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FFA000;strokeWidth=2;" edge="1" parent="1" source="postgres" target="superset">
+        <mxCell id="hld-e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4A148C;strokeWidth=2;" edge="1" parent="1" source="hld-topic-dev" target="hld-flink">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hld-e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4A148C;strokeWidth=2;" edge="1" parent="1" source="hld-topic-sys" target="hld-flink">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hld-e10" value="INSERT INTO" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#C62828;strokeWidth=2;" edge="1" parent="1" source="hld-flink" target="hld-topic-mismatch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ZONE 4: Sink & Visualization -->
+        <mxCell id="hld-zone4" value="Zone 4: Storage &amp; Visualization Tier" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#ECEFF1;strokeColor=#37474F;strokeWidth=2;dashed=1;dashPattern=6 4;spacingTop=12;align=left;spacingLeft=15;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="110" width="390" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hld-jdbc" value="&lt;b style='font-size:13px;'&gt;Confluent JDBC Sink Connector&lt;/b&gt;&lt;br&gt;&lt;span style='color:#37474F;'&gt;(Self-Managed Kafka Connect)&lt;/span&gt;&lt;br&gt;&lt;br&gt;• Consumes from &lt;code&gt;count_mismatches&lt;/code&gt;&lt;br&gt;• Auto-table creation / evolution&lt;br&gt;• Batch upserts &amp; retries" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFD8DC;strokeColor=#37474F;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="270" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hld-pg" value="&lt;b style='font-size:13px;'&gt;PostgreSQL Data Warehouse&lt;/b&gt;&lt;br&gt;Port: &lt;b&gt;:5432&lt;/b&gt;&lt;br&gt;&lt;br&gt;Table: &lt;code&gt;count_mismatches&lt;/code&gt;&lt;br&gt;Indexes on &lt;code&gt;device_id, window_start&lt;/code&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#B0BEC5;strokeColor=#263238;fontSize=11;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="440" width="230" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hld-superset" value="&lt;b style='font-size:13px;'&gt;Apache Superset BI Dashboard&lt;/b&gt;&lt;br&gt;Port: &lt;b&gt;:8088&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Real-time Machine Outage Tracker&lt;br&gt;• Sensor Drift &amp; False-Pulse Hotspot Heatmap&lt;br&gt;• Shift Discrepancy Breakdown" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE082;strokeColor=#E65100;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1365" y="600" width="260" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Edges Zone 3 -> Zone 4 -->
+        <mxCell id="hld-e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474F;strokeWidth=2;" edge="1" parent="1" source="hld-topic-mismatch" target="hld-jdbc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1300" y="605" />
+              <mxPoint x="1300" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hld-e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474F;strokeWidth=2;" edge="1" parent="1" source="hld-jdbc" target="hld-pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hld-e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E65100;strokeWidth=2;" edge="1" parent="1" source="hld-pg" target="hld-superset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ========================================================================================= -->
+  <!-- PAGE 2: LOW-LEVEL ARCHITECTURE (LLD)                                                     -->
+  <!-- ========================================================================================= -->
+  <diagram id="iot-reconciliation-lld" name="Low-Level Architecture (LLD)">
+    <mxGraphModel dx="1600" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE BAR -->
+        <mxCell id="lld-title" value="&lt;b style='font-size: 18px;'&gt;IoT Edge-to-Cloud Real-Time Discrepancy Reconciliation Engine&lt;/b&gt;&lt;br&gt;&lt;span style='font-size: 12px; color: #555;'&gt;Low-Level Technical Architecture (LLD) — Data Schemas, SMT Transforms, Flink SQL Joins &amp; DDL&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#33691E;strokeWidth=2;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="1680" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- COLUMN 1: Edge Serialization & Topic Routing -->
+        <mxCell id="lld-col1" value="1. Edge MQTT Telemetry &amp; Serialization" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#E8F0FE;strokeColor=#1A73E8;strokeWidth=2;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="370" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-payload" value="&lt;b&gt;Edge Wire Format (Delimited Token / JSON)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;code&gt;&amp;lt;device_id&amp;gt;::&amp;lt;line&amp;gt;::&amp;lt;parts&amp;gt;::&amp;lt;status&amp;gt;::&amp;lt;ts&amp;gt;&lt;/code&gt;&lt;br&gt;&lt;br&gt;Example Payload:&lt;br&gt;&lt;code&gt;pi-03::line1::1::RUNNING::2026-09-30T13:00:00Z&lt;/code&gt;&lt;br&gt;&lt;br&gt;• Compact footprint: ~45 bytes/msg&lt;br&gt;• MQTT QoS: 1 (PUBACK required)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1A73E8;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="150" width="330" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-routes" value="&lt;b&gt;Mosquitto MQTT Topic Hierarchy&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;code&gt;factory/lines/line1/machines/pi-01&lt;/code&gt;&lt;br&gt;&lt;code&gt;factory/lines/line1/machines/pi-02&lt;/code&gt;&lt;br&gt;&lt;code&gt;factory/lines/line2/machines/pi-05&lt;/code&gt;&lt;br&gt;&lt;code&gt;factory/lines/line3/machines/pi-08&lt;/code&gt;&lt;br&gt;&lt;br&gt;Wildcard subscription by Connect: &lt;b&gt;&lt;code&gt;factory/#&lt;/code&gt;&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1A73E8;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="330" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-avro-schema" value="&lt;b&gt;Avro Schema Contract (`part_event.avsc`)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;pre style='font-size:10px;'&gt;{&#xa;  &quot;type&quot;: &quot;record&quot;,&#xa;  &quot;name&quot;: &quot;PartEvent&quot;,&#xa;  &quot;namespace&quot;: &quot;com.factory.iot&quot;,&#xa;  &quot;fields&quot;: [&#xa;    {&quot;name&quot;: &quot;device_id&quot;, &quot;type&quot;: &quot;string&quot;},&#xa;    {&quot;name&quot;: &quot;line&quot;,      &quot;type&quot;: &quot;string&quot;},&#xa;    {&quot;name&quot;: &quot;parts&quot;,     &quot;type&quot;: &quot;int&quot;},&#xa;    {&quot;name&quot;: &quot;status&quot;,    &quot;type&quot;: &quot;string&quot;},&#xa;    {&quot;name&quot;: &quot;ts&quot;,        &quot;type&quot;: &quot;string&quot;}&#xa;  ]&#xa;}&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1A73E8;fontSize=10;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="490" width="330" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- COLUMN 2: Kafka Connect SMT & Wire Transform -->
+        <mxCell id="lld-col2" value="2. Kafka Connect Engine (SMT &amp; Avro Conversion)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#F1F8E9;strokeColor=#33691E;strokeWidth=2;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="440" y="110" width="390" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-smt" value="&lt;b&gt;Single Message Transform (SMT) Logic&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 1: Extract Key from Regex/Topic&lt;/b&gt;&lt;br&gt;Transform: &lt;code&gt;ExtractTopic$Key&lt;/code&gt; extracts &lt;code&gt;device_id&lt;/code&gt; as Kafka message key for partition hash alignment.&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 2: Delimited to Structured Record&lt;/b&gt;&lt;br&gt;Tokenizes payload by &lt;code&gt;::&lt;/code&gt; and binds to Avro schema fields.&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 3: Confluent Schema ID Header Prepending&lt;/b&gt;&lt;br&gt;Wire format: &lt;code&gt;[0x00 (1B)] + [Schema_ID (4B)] + [Avro Payload]&lt;/code&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#33691E;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="465" y="150" width="340" height="210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-conn-config" value="&lt;b&gt;Connector JSON Config Snapshot&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;code style='font-size:10px;'&gt;&quot;connector.class&quot;: &quot;io.confluent.connect.mqtt.MqttSourceConnector&quot;,&lt;br&gt;&quot;mqtt.server.uris&quot;: &quot;tcp://mosquitto:1883&quot;,&lt;br&gt;&quot;mqtt.topics&quot;: &quot;factory/#&quot;,&lt;br&gt;&quot;kafka.topic&quot;: &quot;device_counts&quot;,&lt;br&gt;&quot;value.converter&quot;: &quot;io.confluent.connect.avro.AvroConverter&quot;,&lt;br&gt;&quot;value.converter.schema.registry.url&quot;: &quot;${SCHEMA_REGISTRY_URL}&quot;,&lt;br&gt;&quot;value.converter.basic.auth.user.info&quot;: &quot;${SR_KEY}:${SR_SECRET}&quot;&lt;/code&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#33691E;fontSize=10;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="465" y="380" width="340" height="190" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-mes-flow" value="&lt;b&gt;MES Cloud Producer Contract&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Produces directly to topic: &lt;code&gt;system_counts&lt;/code&gt;&lt;br&gt;• SASL_SSL PLAIN Auth&lt;br&gt;• Deliberate anomaly injection (0.15 rate) for test validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#33691E;fontSize=11;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="465" y="590" width="340" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- COLUMN 3: Confluent Flink SQL Engine Internals -->
+        <mxCell id="lld-col3" value="3. Confluent Flink SQL Engine (Event-Time Window Reconciliation)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#F3E5F5;strokeColor=#4A148C;strokeWidth=2;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="860" y="110" width="460" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-flink-ddl" value="&lt;b&gt;Flink DDL with Event-Time Watermarks&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;pre style='font-size:10px;'&gt;CREATE TABLE device_counts (&#xa;  device_id STRING,&#xa;  line STRING,&#xa;  parts INT,&#xa;  ts STRING,&#xa;  event_time AS TO_TIMESTAMP_LTZ(ts, 'yyyy-MM-dd''T''HH:mm:ss''Z'''),&#xa;  WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND&#xa;);&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A148C;fontSize=10;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="880" y="150" width="420" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-flink-sql" value="&lt;b&gt;Continuous Discrepancy Detection Query&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;pre style='font-size:9.5px;'&gt;INSERT INTO count_mismatches&#xa;SELECT &#xa;    COALESCE(d.window_start, s.window_start) AS window_start,&#xa;    COALESCE(d.window_end, s.window_end) AS window_end,&#xa;    COALESCE(d.device_id, s.device_id) AS device_id,&#xa;    COALESCE(d.total_device_parts, 0) AS device_total,&#xa;    COALESCE(s.total_system_parts, 0) AS system_total,&#xa;    (COALESCE(d.total_device_parts, 0) - COALESCE(s.total_system_parts, 0)) AS discrepancy,&#xa;    CURRENT_TIMESTAMP AS detected_at&#xa;FROM (&#xa;    SELECT window_start, window_end, device_id, SUM(parts) AS total_device_parts&#xa;    FROM TABLE(TUMBLE(TABLE device_counts, DESCRIPTOR(event_time), INTERVAL '1' MINUTE))&#xa;    GROUP BY window_start, window_end, device_id&#xa;) d&#xa;FULL OUTER JOIN (&#xa;    SELECT window_start, window_end, device_id, SUM(parts) AS total_system_parts&#xa;    FROM TABLE(TUMBLE(TABLE system_counts, DESCRIPTOR(event_time), INTERVAL '1' MINUTE))&#xa;    GROUP BY window_start, window_end, device_id&#xa;) s&#xa;ON d.window_start = s.window_start AND d.device_id = s.device_id&#xa;WHERE COALESCE(d.total_device_parts, 0) &lt;&gt; COALESCE(s.total_system_parts, 0);&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4A148C;fontSize=9.5;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="880" y="320" width="420" height="390" as="geometry" />
+        </mxCell>
+
+        <!-- COLUMN 4: Persistence Schema & Superset Queries -->
+        <mxCell id="lld-col4" value="4. PostgreSQL Schema &amp; Superset Analytics" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=13;fillColor=#ECEFF1;strokeColor=#37474F;strokeWidth=2;align=left;spacingLeft=15;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="110" width="370" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-pg-ddl" value="&lt;b&gt;PostgreSQL DDL (`init.sql`)&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;pre style='font-size:10px;'&gt;CREATE TABLE count_mismatches (&#xa;    id SERIAL PRIMARY KEY,&#xa;    window_start TIMESTAMP NOT NULL,&#xa;    window_end TIMESTAMP,&#xa;    device_id VARCHAR(50) NOT NULL,&#xa;    device_total INTEGER NOT NULL,&#xa;    system_total INTEGER NOT NULL,&#xa;    discrepancy INTEGER NOT NULL,&#xa;    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP&#xa;);&#xa;&#xa;CREATE INDEX idx_mismatches_device &#xa;    ON count_mismatches(device_id);&#xa;CREATE INDEX idx_mismatches_window &#xa;    ON count_mismatches(window_start);&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="150" width="330" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lld-card-analytics" value="&lt;b&gt;Key Operational SQL Metrics&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;1. Sensor Dropped Pulses vs Bounce:&lt;/b&gt;&lt;br&gt;&lt;pre style='font-size:9.5px;'&gt;SELECT &#xa;  device_id,&#xa;  COUNT(CASE WHEN discrepancy &gt; 0 THEN 1 END) AS over_counts,&#xa;  COUNT(CASE WHEN discrepancy &lt; 0 THEN 1 END) AS dropped_pulses,&#xa;  AVG(ABS(discrepancy)) AS avg_drift&#xa;FROM count_mismatches GROUP BY device_id;&lt;/pre&gt;&lt;br&gt;&lt;b&gt;2. Shift Drift Aggregate:&lt;/b&gt;&lt;br&gt;&lt;pre style='font-size:9.5px;'&gt;SELECT DATE_TRUNC('hour', window_start) AS hr,&#xa;       SUM(ABS(discrepancy)) AS total_drift&#xa;FROM count_mismatches GROUP BY hr ORDER BY hr;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#37474F;fontSize=10;spacing=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="400" width="330" height="310" as="geometry" />
         </mxCell>
 
       </root>

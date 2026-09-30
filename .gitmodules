@@ -1,0 +1,3 @@
+[submodule "projects/iot-parts-reconciliation"]
+	path = projects/iot-parts-reconciliation
+	url = https://github.com/mysticBliss/iot-parts-reconciliation.git

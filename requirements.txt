@@ -3,3 +3,7 @@ confluent-kafka[avro]>=2.3.0
 requests>=2.31.0
 python-dotenv>=1.0.1
 fastavro>=1.9.4
+streamlit>=1.32.0
+plotly>=5.19.0
+pandas>=2.2.0
+psycopg2-binary>=2.9.9

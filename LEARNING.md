@@ -295,6 +295,403 @@ This is the bridge between real-world plant operations and streaming theory:
 > 
 > With Schema Registry and Avro:
 > - The schema contract (`part_event.avsc`) is enforced at the producer level with `BACKWARD` compatibility rules.
-> - Confluent Flink automatically reads Schema Registry and generates native typed columns (`STRING`, `INT`), eliminating SQL parsing boilerplate."*
+---
 
+## 7. Edge Fault Simulation & Benchmarking Modes
+
+The simulator supports two distinct operating modes to facilitate clear demo presentation and benchmark testing:
+
+### Mode A: Clean Baseline Mode (`--clean`)
+- **Behavior:** 0 glitches, 0 clock drifts, 0 MES noise, 0 timetable faults.
+- **Expected Outcome:** 100% perfect reconciliation. `count_mismatches` table remains empty (or variance = 0).
+- **Execution:**
+  ```bash
+  python simulators/dual_simulator.py --clean
+  ```
+
+### Mode B: Fault & Glitch Injection Mode (Default)
+- **Behavior:** Injects automated hourly faults according to a fixed schedule:
+  - `MM:05 - MM:08`: `pi-02` Sensor Double-Bounce (`parts: 2-3`)
+  - `MM:15 - MM:18`: `pi-06` Missed Pulse (`parts: 0`)
+  - `MM:25 - MM:27`: `pi-09` Clock Jitter (`±25s`)
+  - `MM:35 - MM:37`: `pi-03` Mini Outage & Burst Replay
+  - `MM:48 - MM:51`: `pi-07` Overheat Double-Count
+- **Execution:**
+  ```bash
+  # Standard fault timetable + 15% MES noise
+  python simulators/dual_simulator.py
+
+  # Deactivate timetable but keep random 10% glitch rate
+  python simulators/dual_simulator.py --no-schedule --glitch-rate 0.10
+  ```
+
+---
+
+## 10. PostgreSQL `generate_series` vs Flink SQL `TUMBLE` (Window TVFs)
+
+When transitioning from relational databases like PostgreSQL to stream processing engines like Apache Flink, one of the most common architectural shifts is how time-based aggregation windows are generated.
+
+---
+
+### In PostgreSQL (Batch / Static Tables):
+PostgreSQL operates on bounded, stored historical datasets. To generate continuous 1-minute time buckets over a window of time, you typically synthesize time rows using **`generate_series()`** and join against your data table with `date_trunc()`:
+
+```sql
+-- PostgreSQL Approach: Synthetic interval generation
+SELECT 
+    b.time_bucket AS window_start,
+    b.time_bucket + INTERVAL '1 minute' AS window_end,
+    d.device_id,
+    COALESCE(SUM(d.parts), 0) AS total_parts
+FROM generate_series(
+    '2026-09-30 19:00:00'::timestamptz, 
+    '2026-09-30 20:00:00'::timestamptz, 
+    INTERVAL '1 minute'
+) AS b(time_bucket)
+LEFT JOIN device_counts d 
+  ON date_trunc('minute', d.event_time) = b.time_bucket
+GROUP BY b.time_bucket, d.device_id;
+```
+
+---
+
+### In Apache Flink SQL (Continuous Unbounded Streams):
+Flink processes continuous, infinite event streams in real time as events arrive over the network. It uses modern SQL standard **Windowing Table-Valued Functions (TVFs)**:
+
+```sql
+-- Flink SQL Approach: Native Streaming Window TVF
+SELECT
+    device_id,
+    line,
+    window_start,
+    window_end,
+    SUM(parts) AS device_total
+FROM TABLE(
+    TUMBLE(
+        TABLE v_device_counts, 
+        DESCRIPTOR(event_time), 
+        INTERVAL '1' MINUTE
+    )
+)
+GROUP BY device_id, line, window_start, window_end;
+```
+
+---
+
+### Deep Dive: Breaking Down the Flink Window Syntax
+
+Let's dissect the exact components of `TABLE(TUMBLE(...))`:
+
+```
+                       TABLE( ... )  ─── 1. Table-Valued Function (TVF) Wrapper
+                         │
+                         ▼
+        ┌─────────────────────────────────────────────────────────────┐
+        │  TUMBLE(                                                    │
+        │      TABLE v_device_counts,    ── 2. Source stream          │
+        │      DESCRIPTOR(event_time),   ── 3. Time column descriptor │
+        │      INTERVAL '1' MINUTE       ── 4. Fixed window duration  │
+        │  )                                                          │
+        └─────────────────────────────────────────────────────────────┘
+```
+
+#### 1. What is a Table-Valued Function (`TABLE(...)`)?
+- In standard SQL, normal functions like `UPPER('text')` or `SUM(x)` return a **single scalar value**.
+- A **Table-Valued Function (TVF)** takes a table/stream as input and **returns an entirely new virtual table** with new computed columns attached.
+- The `TABLE(...)` keyword informs the SQL engine: *"Treat the output of this function as a real table that I can query with `SELECT`, `WHERE`, `GROUP BY`, or `JOIN`."*
+
+#### 2. `TABLE v_device_counts` (Source Stream)
+- Specifies the underlying stream or view whose rows should be partitioned into time windows.
+
+#### 3. `DESCRIPTOR(event_time)` (Timestamp Column)
+- `DESCRIPTOR(col)` passes the **column identifier metadata** itself rather than evaluating its scalar value on each row.
+- This tells Flink to align windows to the event's embedded **watermarked event-time** (`$rowtime`), ensuring late or out-of-order IoT data lands in the correct time slice.
+
+#### 4. `INTERVAL '1' MINUTE` (Window Size)
+- Defines non-overlapping, contiguous time buckets (e.g., `19:00:00–19:01:00`, `19:01:00–19:02:00`).
+
+#### 5. Output Columns Generated by `TUMBLE`:
+`TABLE(TUMBLE(...))` passes through all original columns and **automatically injects 3 new window columns**:
+- `window_start`: Window starting timestamp (inclusive).
+- `window_end`: Window ending timestamp (exclusive).
+- `window_time`: The window watermark timestamp.
+
+---
+
+### Key Differences & Architectural Advantages:
+
+| Feature | PostgreSQL `generate_series()` | Flink SQL `TUMBLE(...)` TVF |
+|---|---|---|
+| **Data Nature** | Bounded / Static historical tables | Unbounded / Infinite real-time stream |
+| **Window Boundary Trigger** | Static query execution time | **Watermark-driven** (event-time completion) |
+| **Out-of-Order Handling** | Must re-scan entire table | Handled via watermark lateness tolerance |
+| **State Retention** | Reads from disk tables on demand | Managed in Flink state backend (RocksDB/Memory) |
+| **Output Emission** | Single batch result on query completion | **Emits continuously** per window boundary close |
+
+---
+
+## 11. Edge Clock Jitter & Window Spillover Mechanics
+
+### What is Clock Jitter?
+Clock jitter (or clock drift) occurs when an edge IoT sensor / PLC microcontroller loses synchronization with the plant's true time (or Cloud MES server clock) due to missing NTP servers or RTC hardware drift.
+
+### How Clock Jitter Breaks Stream Windowing (The Spillover Effect):
+When a machine produces parts steadily at 1 part/sec, but its edge clock drifts backwards by e.g. 20 seconds, parts produced in Minute 2 get event-time stamped with Minute 1 timestamps.
+
+```
+                   1-Minute Window A (18:59 - 19:00)         1-Minute Window B (19:00 - 19:01)
+                ┌──────────────────────────────────────┐  ┌──────────────────────────────────────┐
+MES Record      │ Count: 30 parts                      │  │ Count: 30 parts                      │
+                │                                      │  │                                      │
+Edge Device     │ Count: 31 parts (+1 extra spilled in)│  │ Count: 29 parts (-1 missing part)    │
+                └──────────────────────────────────────┘  └──────────────────────────────────────┘
+                                  │                                         │
+                                  ▼                                         ▼
+                        Discrepancy: +1                           Discrepancy: -1
+```
+
+### The Signature of Clock Jitter:
+1. **Window A:** $+N$ positive discrepancy.
+2. **Immediate Window B:** $-N$ negative discrepancy.
+3. **Net Total:** **Zero net error** across the full window interval $(+N - N = 0)$. No parts were physically lost or gained; timestamps simply drifted across the tumbling window boundary.
+
+---
+
+## 12. Watermark Tolerance Experiments & Session Windows
+
+File reference: [03_watermark_experiments.sql](file:///c:/Users/saqib.tamli/Documents/Repos/git_saqie/saqib-resume/projects/iot-parts-reconciliation/flink_sql/03_watermark_experiments.sql)
+
+In real-world distributed streaming, network jitter and factory power dips mean events do not arrive in perfect chronological order. Watermarks are the mechanism Flink uses to declare: *"We believe all events prior to time $T$ have arrived; we can now safely close the window and emit results."*
+
+---
+
+### Scenario A: Strict Watermark (`event_time - INTERVAL '5' SECOND`)
+
+```sql
+WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+```
+
+```
+Event Stream: ──[19:00:10]───[19:00:20]───[19:00:30]───[19:01:05]
+                                                               │
+                                         Watermark advances to: 19:01:00 (19:01:05 - 5s)
+                                         Window [19:00 - 19:01] CLOSES & EMITS INSTANTLY!
+```
+
+- **Pros:**
+  - **Ultra-low latency:** Discrepancy alerts emit within 5 seconds of the physical minute ending.
+  - **Minimal memory/state footprint:** Flink flushes window aggregations from state immediately.
+- **Cons:**
+  - **Drops late data:** If a machine loses Wi-Fi for 15 seconds and sends buffered events with timestamps older than 5s behind the watermark, Flink silently drops them or flags them as missing parts.
+
+---
+
+### Scenario B: Relaxed Watermark (`event_time - INTERVAL '60' SECOND`)
+
+```sql
+WATERMARK FOR event_time AS event_time - INTERVAL '60' SECOND
+```
+
+```
+Event Stream: ──[19:00:10]───[19:00:20]───[19:01:05]───[19:02:00]
+                                                               │
+                                         Watermark advances to: 19:01:00 (19:02:00 - 60s)
+                                         Window [19:00 - 19:01] CLOSES HERE (1 min later)
+```
+
+- **Pros:**
+  - **High fault tolerance:** Absorbs edge machine mini-outages (e.g. `pi-03` rebooting and bursting 45 seconds of buffered data) without dropping events.
+- **Cons:**
+  - **High alert latency:** Downstream alerts for the `19:00 - 19:01` window are delayed until `19:02:00` (an extra 60s delay).
+  - **Higher RAM consumption:** Flink must hold RocksDB/memory state for all 50+ machines open for an extra 60 seconds.
+
+---
+
+### Summary Comparison: The Watermark Tradeoff Curve
+
+| Property | Strict Watermark (5s) | Relaxed Watermark (60s) |
+|---|---|---|
+| **Alert Latency** | Near real-time (~5s after minute ends) | Delayed (~60s after minute ends) |
+| **State Memory Size** | Very Small (flushed immediately) | Larger (held in memory buffer for 60s) |
+| **Tolerance to Network Jitter** | Fragile (drops bursts >5s late) | High (absorbs bursts up to 60s late) |
+| **Best Used For** | Urgent safety stops, live visual dashboards | Accurate financial reconciliation, audit logs |
+
+---
+
+### Scenario C: Session Windows for Inactivity Detection (Dead Machine / Silent Failure)
+
+```sql
+SELECT
+    device_id,
+    SESSION_START(event_time, INTERVAL '3' MINUTE) AS session_start,
+    SESSION_END(event_time, INTERVAL '3' MINUTE) AS session_end,
+    COUNT(*) AS event_count
+FROM device_counts
+GROUP BY
+    device_id,
+    SESSION(event_time, INTERVAL '3' MINUTE);
+```
+
+#### How Session Windows Work:
+Unlike `TUMBLE` (fixed 1-minute blocks), a **`SESSION` Window** has no fixed duration. It groups events into an active "session" as long as new events keep arriving within the **gap threshold (3 minutes)**.
+
+```
+Device Events: ──[●]──[●]──[●]────────────────────────[●]──[●]───▶
+                 └── Active Session 1 ──┘  Gap > 3 min  └── Session 2 ──┘
+```
+
+- When a device stops producing pulses for longer than 3 minutes, the session **closes and emits**.
+- **Factory Floor Value:** Instantly flags **silent machine failures** (e.g., disconnected sensor cable, PLC firmware freeze) without needing separate heartbeat infrastructure.
+
+---
+
+## 9. Event Time vs Ingestion Time: The Dual-Clock Reality
+
+In distributed stream processing, every event has two timestamps:
+
+```
+[ 1. Event Time (ts) ]       ───► The physical moment the part was stamped on the factory floor.
+[ 2. Ingestion Time ($rowtime) ] ──► The moment Confluent Kafka / Flink received the network packet.
+```
+
+### Why Measuring Edge-to-Cloud Lag Matters
+```sql
+SELECT
+    device_id,
+    line,
+    ts AS edge_device_ts,
+    event_time AS flink_ingest_ts,
+    TIMESTAMPDIFF(
+        SECOND, 
+        TO_TIMESTAMP_LTZ(ts, 'yyyy-MM-dd''T''HH:mm:ss''Z'''), 
+        event_time
+    ) AS edge_to_cloud_lag_seconds,
+    parts,
+    status
+FROM v_device_counts
+WHERE device_id IN ('pi-03', 'pi-09');
+```
+
+- **Normal Steady-State:** Lag is `0s` to `2s`.
+- **Clock Jitter (`pi-09` at MM:25):** Lag jumps to `-25s` or `+25s` because the Raspberry Pi OS clock drifted.
+- **Outage Reconnection Burst (`pi-03` at MM:35-37):** Lag jumps to `70s - 120s` as buffered memory pulses are flushed to the cloud.
+
+### Why Ingestion Time Corrupts Count Windows
+If you window by Ingestion Time instead of Event Time:
+1. During an outage, counts drop to `0` (false downtime alarm).
+2. When the machine reconnects, 90 buffered parts arrive in 1 second (false overproduction alarm).
+3. **By using Event Time + Watermarks**, Flink properly sorts all 90 parts back into their original 1-minute time boxes!
+
+---
+
+## 10. Real-Time Stream Enrichment (Dimension & Lookup Joins)
+
+Raw IoT events are lightweight: `(device_id, line, parts, ts)`. 
+To turn raw data into operational intelligence, Flink enriches the stream with business metadata in real time:
+
+```sql
+SELECT 
+    d.event_time,
+    d.device_id,
+    d.line,
+    d.parts,
+    CASE 
+        WHEN d.device_id IN ('pi-01', 'pi-02', 'pi-03') THEN 'Stamping & Press Zone A'
+        WHEN d.device_id IN ('pi-04', 'pi-05', 'pi-06') THEN 'Robotic Welding Cell B'
+        ELSE 'Final Assembly & Inspection'
+    END AS plant_zone,
+    CASE 
+        WHEN d.device_id IN ('pi-02', 'pi-07') THEN 'Optical Sensor (Bounce Prone)'
+        WHEN d.device_id = 'pi-06' THEN 'Inductive Proximity (Miss Prone)'
+        WHEN d.device_id = 'pi-03' THEN 'Edge Gateway (Outage Prone)'
+        ELSE 'Standard Relay'
+    END AS sensor_tech
+FROM v_device_counts d;
+```
+
+**Key Streaming Principle:** Telemetry events stay lean (saving edge bandwidth), while Flink handles contextual enrichment in the cloud before pushing alerts downstream.
+
+---
+
+## 11. Complex Event Processing (Flink CEP via `MATCH_RECOGNIZE`)
+
+Standard SQL aggregations (`SUM`, `COUNT`) calculate values over fixed time boxes.
+**Flink CEP** detects **temporal sequences and state machine transitions** across multiple rows.
+
+### Pattern 1: Rapid Optical Bounce Flapping (3+ Glitches in 20s)
+```sql
+SELECT *
+FROM v_device_counts
+    MATCH_RECOGNIZE (
+        PARTITION BY device_id
+        ORDER BY event_time
+        MEASURES
+            FIRST(A.event_time) AS pattern_start,
+            LAST(B.event_time) AS pattern_end,
+            COUNT(B.parts) + 1 AS consecutive_bounces,
+            SUM(B.parts) + FIRST(A.parts) AS total_parts_produced
+        ONE ROW PER MATCH
+        AFTER MATCH SKIP PAST LAST ROW
+        PATTERN (A B+) WITHIN INTERVAL '20' SECOND
+        DEFINE
+            A AS A.parts > 1,
+            B AS B.parts > 1
+    );
+```
+
+### Pattern 2: Consecutive Zero-Pulse Sensor Blindness
+Detects when a proximity sensor is physically blocked and produces 2 consecutive `parts = 0` pulses within 15 seconds:
+```sql
+SELECT *
+FROM v_device_counts
+    MATCH_RECOGNIZE (
+        PARTITION BY device_id
+        ORDER BY event_time
+        MEASURES
+            FIRST(A.event_time) AS failure_start,
+            LAST(B.event_time) AS failure_end,
+            'CRITICAL: CONSECUTIVE ZERO COUNTS DETECTED' AS alert_msg
+        ONE ROW PER MATCH
+        AFTER MATCH SKIP PAST LAST ROW
+        PATTERN (A B) WITHIN INTERVAL '15' SECOND
+        DEFINE
+            A AS A.parts = 0,
+            B AS B.parts = 0
+    );
+```
+
+### Pattern 3: Outage Recovery Spike / Rapid Burst Detector
+Detects when a machine reconnects and emits $> 10$ pulses within 5 seconds:
+```sql
+SELECT *
+FROM v_device_counts
+    MATCH_RECOGNIZE (
+        PARTITION BY device_id
+        ORDER BY event_time
+        MEASURES
+            FIRST(BURST.event_time) AS burst_start,
+            LAST(BURST.event_time) AS burst_end,
+            COUNT(BURST.parts) AS total_burst_events,
+            SUM(BURST.parts) AS total_burst_parts,
+            'RECOVERY FLUSH DETECTED' AS incident_tag
+        ONE ROW PER MATCH
+        AFTER MATCH SKIP PAST LAST ROW
+        PATTERN (BURST{10,}) WITHIN INTERVAL '5' SECOND
+        DEFINE
+            BURST AS TRUE
+    );
+```
+
+---
+
+## 12. Real-Time Analytics & Streamlit Dashboard Architecture
+
+Traditional BI tools (Tableau, PowerBI) are pull-based and struggle with continuous push streams. By extracting structured discrepancy records from Flink SQL into a lightweight Streamlit application, we achieve zero-cost, real-time analytics.
+
+### Streamlit Dashboard Highlights (`dashboard.py`):
+1. **Executive Fleet KPIs:** Total edge pulse count, MES plan target, net discrepancy ($\Delta$), and fleet reconciliation accuracy %.
+2. **1-Minute Window Drift Chart:** Interactive Plotly time-series comparing physical vs. enterprise production with discrepancy bars.
+3. **Root-Cause Anomaly Taxonomy:** Interactive donut chart categorizing `POSITIVE_BOUNCE`, `NEGATIVE_MISSED`, `CLOCK_JITTER`, and `BURST_RECOVERY`.
+4. **Edge-to-Cloud Lag Gauge:** Live monitoring of $(rowtime - ts)$ buffer flush latency across production lines.
+5. **Incident Feed:** Real-time filterable table for manufacturing operations teams.
 
