@@ -615,83 +615,98 @@ FROM v_device_counts d;
 
 ## 11. Complex Event Processing (Flink CEP via `MATCH_RECOGNIZE`)
 
-Standard SQL aggregations (`SUM`, `COUNT`) calculate values over fixed time boxes.
-**Flink CEP** detects **temporal sequences and state machine transitions** across multiple rows.
+### 11.1 Functional Understanding: Why Aggregations (`SUM`, `COUNT`) Fall Short
+In traditional stream processing, you group events into fixed time boxes (`TUMBLE(INTERVAL '1' MINUTE)`). 
+However, **time boxes cannot detect sequential multi-event cause-and-effect patterns**:
+- *Question:* "Did machine `pi-02` experience 3 consecutive optical bounces within 20 seconds?"
+- *Question:* "Did a machine go silent, then suddenly dump 60 late events in 2 seconds?"
+- *Question:* "Did a proximity sensor drop 2 consecutive pulses?"
 
-### Pattern 1: Rapid Optical Bounce Flapping (3+ Glitches in 20s)
+A 1-minute window might slice these events across two separate windows (`19:00:59` and `19:01:01`), causing you to miss the incident entirely. 
+
+**`MATCH_RECOGNIZE` solves this by turning Flink SQL into a Continuous State Machine (Regular Expressions over Event Streams).**
+
+---
+
+### 11.2 Technical Anatomy of `MATCH_RECOGNIZE`
+
+```
+  Incoming Events:  ──[A]────►──[B]────►──[B]────►──[B]──► (Pattern Matched!)
+                     Parts>1    Parts>1   Parts>1  Parts>1
+                     │                                   │
+                     └───────── WITHIN 20 SECONDS ───────┘
+```
+
 ```sql
 SELECT *
 FROM v_device_counts
     MATCH_RECOGNIZE (
-        PARTITION BY device_id
-        ORDER BY event_time
-        MEASURES
+        PARTITION BY device_id                      -- 1. State machine per machine
+        ORDER BY event_time                         -- 2. Strictly ordered by Event-Time
+        MEASURES                                    -- 3. Output computed metrics
             FIRST(A.event_time) AS pattern_start,
             LAST(B.event_time) AS pattern_end,
             COUNT(B.parts) + 1 AS consecutive_bounces,
             SUM(B.parts) + FIRST(A.parts) AS total_parts_produced
-        ONE ROW PER MATCH
-        AFTER MATCH SKIP PAST LAST ROW
-        PATTERN (A B+) WITHIN INTERVAL '20' SECOND
-        DEFINE
+        ONE ROW PER MATCH                           -- 4. Emit 1 summary row per sequence
+        AFTER MATCH SKIP PAST LAST ROW              -- 5. Advance state pointer
+        PATTERN (A B+) WITHIN INTERVAL '20' SECOND   -- 6. Regex: One 'A' followed by 1+ 'B's
+        DEFINE                                      -- 7. State conditions
             A AS A.parts > 1,
             B AS B.parts > 1
     );
 ```
 
-### Pattern 2: Consecutive Zero-Pulse Sensor Blindness
-Detects when a proximity sensor is physically blocked and produces 2 consecutive `parts = 0` pulses within 15 seconds:
-```sql
-SELECT *
-FROM v_device_counts
-    MATCH_RECOGNIZE (
-        PARTITION BY device_id
-        ORDER BY event_time
-        MEASURES
-            FIRST(A.event_time) AS failure_start,
-            LAST(B.event_time) AS failure_end,
-            'CRITICAL: CONSECUTIVE ZERO COUNTS DETECTED' AS alert_msg
-        ONE ROW PER MATCH
-        AFTER MATCH SKIP PAST LAST ROW
-        PATTERN (A B) WITHIN INTERVAL '15' SECOND
-        DEFINE
-            A AS A.parts = 0,
-            B AS B.parts = 0
-    );
-```
-
-### Pattern 3: Outage Recovery Spike / Rapid Burst Detector
-Detects when a machine reconnects and emits $> 10$ pulses within 5 seconds:
-```sql
-SELECT *
-FROM v_device_counts
-    MATCH_RECOGNIZE (
-        PARTITION BY device_id
-        ORDER BY event_time
-        MEASURES
-            FIRST(BURST.event_time) AS burst_start,
-            LAST(BURST.event_time) AS burst_end,
-            COUNT(BURST.parts) AS total_burst_events,
-            SUM(BURST.parts) AS total_burst_parts,
-            'RECOVERY FLUSH DETECTED' AS incident_tag
-        ONE ROW PER MATCH
-        AFTER MATCH SKIP PAST LAST ROW
-        PATTERN (BURST{10,}) WITHIN INTERVAL '5' SECOND
-        DEFINE
-            BURST AS TRUE
-    );
-```
+#### Step-by-Step Execution Breakdown:
+1. **`PARTITION BY device_id`**: Flink maintains an independent finite state machine (FSM) in memory for each individual Raspberry Pi.
+2. **`ORDER BY event_time`**: Ensures the state machine transitions only on true physical creation order, governed by Flink's event-time watermarks.
+3. **`PATTERN (A B+) WITHIN INTERVAL '20' SECOND`**:
+   - `A`: The initial trigger pulse where `parts > 1`.
+   - `B+`: One or more subsequent pulses where `parts > 1`.
+   - `WITHIN INTERVAL '20' SECOND`: If 20 seconds elapse without completing the pattern, Flink resets the state machine to prevent memory leaks.
+4. **`MEASURES`**: Functions like `FIRST()` and `LAST()` extract the boundary timestamps and aggregate metrics across the matched sequence.
+5. **`AFTER MATCH SKIP PAST LAST ROW`**: Discards the consumed events so the next bounce pattern starts fresh without duplicate alerts.
 
 ---
 
-## 12. Real-Time Analytics & Streamlit Dashboard Architecture
+## 12. Enterprise Streamlit Analytics Platform
 
-Traditional BI tools (Tableau, PowerBI) are pull-based and struggle with continuous push streams. By extracting structured discrepancy records from Flink SQL into a lightweight Streamlit application, we achieve zero-cost, real-time analytics.
+> **Live Hosted Production Dashboard:**  
+> 👉 [https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)
 
-### Streamlit Dashboard Highlights (`dashboard.py`):
-1. **Executive Fleet KPIs:** Total edge pulse count, MES plan target, net discrepancy ($\Delta$), and fleet reconciliation accuracy %.
-2. **1-Minute Window Drift Chart:** Interactive Plotly time-series comparing physical vs. enterprise production with discrepancy bars.
-3. **Root-Cause Anomaly Taxonomy:** Interactive donut chart categorizing `POSITIVE_BOUNCE`, `NEGATIVE_MISSED`, `CLOCK_JITTER`, and `BURST_RECOVERY`.
-4. **Edge-to-Cloud Lag Gauge:** Live monitoring of $(rowtime - ts)$ buffer flush latency across production lines.
-5. **Incident Feed:** Real-time filterable table for manufacturing operations teams.
+### 12.1 Functional Overview
+The Streamlit application provides discrete manufacturing plant directors and operational leads with real-time discrepancy detection, financial risk tracking, and ingestion latency physics.
+
+### 12.2 Dashboard Architecture & Chart Taxonomy:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  TAB 1: Production Stream                                                                        │
+│  • Dual-Subplot: Top area chart displays physical pulses vs MES target.                          │
+│  • Bottom bar stream shows minute-by-minute variance drift (Delta = Edge - MES).                 │
+│  • Root-Cause Taxonomy Donut (POSITIVE_BOUNCE, NEGATIVE_MISSED, CLOCK_JITTER, BURST_RECOVERY).  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 2: Manufacturing Operations                                                                 │
+│  • Output volume and discrepancy drift grouped by Production Line and Operation Stages:          │
+│    Stamping (Blanking, Deep Draw, Piercing), Welding (Spot, MIG, Sub-Frame), Assembly (Marriage).│
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 3: Financial Valuation                                                                      │
+│  • Quantifies inventory discrepancy into dollar exposure ($45 Stamping, $85 Welding, $150 Assm).│
+│  • Financial Subtypes: PHANTOM_INVENTORY_RISK, UNRECORDED_LEAK, OUTAGE_BACKLOG_DELAY.           │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 4: Ingestion Latency Physics & Fleet Reliability                                            │
+│  • Pipeline Latency ($rowtime - ts) detecting memory buffer catchup on pi-03 & jitter on pi-09.  │
+│  • Machine Fleet Synchronization Reliability (%) ranking actual unit uptime.                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 5: Spatio-Temporal Fleet Heatmap                                                            │
+│  • 10 Machines x Time Windows matrix highlighting exact minute-by-minute variance hotspots.       │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 6: Multidimensional Pivot Matrix                                                            │
+│  • Dynamic slice & dice across Line, Operation, Financial Subtype, and Supervisor with CSV export│
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TAB 7: Live Incident Audit Log                                                                  │
+│  • Filterable real-time discrepancy ledger with severity tagging and stage valuation.            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
 

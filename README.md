@@ -1,12 +1,15 @@
 # IoT Edge to Cloud Reconciliation Engine
-### Real-Time Discrepancy Detection with MQTT, Self-Managed Kafka Connect, Confluent Cloud & Flink SQL
+### Real-Time Discrepancy Detection with MQTT, Self-Managed Kafka Connect, Confluent Cloud, Flink SQL & Streamlit
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)
 ![Architecture](https://img.shields.io/badge/Architecture-Event--Driven-blue.svg)
 ![Confluent](https://img.shields.io/badge/Confluent%20Cloud-Kafka%20%7C%20Flink%20SQL-black.svg)
-![Schema](https://img.shields.io/badge/Schema%20Registry-Avro-orange.svg)
-![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen.svg)
+![Status](https://img.shields.io/badge/Status-Live%20Demo%20Ready-brightgreen.svg)
+
+> **Live Interactive Cloud Dashboard:** [https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)
 
 A stream processing pipeline that reconciles high-velocity IoT edge manufacturing counts against an enterprise Manufacturing Execution System (MES) system of record in real time.
+
 
 ---
 
