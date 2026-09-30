@@ -81,9 +81,10 @@ def main():
     if not check_connect_health():
         sys.exit(1)
 
+    # The JDBC sink to PostgreSQL belongs to the earlier Superset design and is no
+    # longer part of the stack - docker-compose does not start Postgres.
     connectors_to_deploy = [
         "mqtt-source-connector.json",
-        "jdbc-sink-connector.json"
     ]
 
     for c in connectors_to_deploy:

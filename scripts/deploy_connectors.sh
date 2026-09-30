@@ -14,10 +14,5 @@ curl -s -X POST -H "Content-Type: application/json" \
   --data @../connectors/mqtt-source-connector.json \
   "$CONNECT_URL/connectors" | jq . || true
 
-echo -e "\nDeploying JDBC Sink Connector..."
-curl -s -X POST -H "Content-Type: application/json" \
-  --data @../connectors/jdbc-sink-connector.json \
-  "$CONNECT_URL/connectors" | jq . || true
-
 echo -e "\nActive Connectors:"
 curl -s "$CONNECT_URL/connectors" | jq .
