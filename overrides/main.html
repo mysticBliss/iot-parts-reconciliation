@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{#
+  SEO / LLM metadata. Material already emits <title>, <meta name="description"> (from each
+  page's front-matter `description`), the canonical link and sitemap.xml. This adds:
+    - Open Graph / Twitter tags, for link previews (LinkedIn, Slack, X)
+    - schema.org JSON-LD: the author, the project as source code, and each page as an article
+#}
+
+{% block extrahead %}
+  {{ super() }}
+  {%- set page_title = page.title if page and page.title else config.site_name -%}
+  {%- set full_title = config.site_name if (page and page.is_homepage) else page_title ~ " · " ~ config.site_name -%}
+  {%- set page_desc = (page.meta.description if page and page.meta and page.meta.description else config.site_description) | trim -%}
+  {%- set page_url = page.canonical_url if page and page.canonical_url else config.site_url -%}
+
+  <meta property="og:type" content="{{ 'website' if (page and page.is_homepage) else 'article' }}">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ full_title }}">
+  <meta property="og:description" content="{{ page_desc }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:locale" content="en_GB">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ full_title }}">
+  <meta name="twitter:description" content="{{ page_desc }}">
+
+  {%- set person = {
+    "@type": "Person",
+    "@id": "https://saqibtamli.vercel.app/#person",
+    "name": "Saqib Mujtaba",
+    "jobTitle": "Data Platform Architect",
+    "url": "https://saqibtamli.vercel.app",
+    "image": "https://avatars.githubusercontent.com/u/11345806?v=4",
+    "sameAs": [
+      "https://www.linkedin.com/in/saqibmj",
+      "https://github.com/mysticBliss",
+      "https://saqibtamli.vercel.app"
+    ],
+    "knowsAbout": ["Apache Kafka", "Confluent Cloud", "Apache Flink", "Flink SQL", "Kafka Connect",
+                   "Schema Registry", "Stream processing", "Industrial IoT", "MQTT", "Data platform architecture"]
+  } -%}
+
+  {%- set website = {
+    "@type": "WebSite",
+    "@id": config.site_url ~ "#website",
+    "name": config.site_name,
+    "url": config.site_url,
+    "description": config.site_description | trim,
+    "inLanguage": "en",
+    "author": {"@id": "https://saqibtamli.vercel.app/#person"}
+  } -%}
+
+  {%- set code = {
+    "@type": "SoftwareSourceCode",
+    "@id": config.site_url ~ "#code",
+    "name": "IoT Edge-to-Cloud Parts Reconciliation Engine",
+    "description": "Reconciles IoT edge part-count telemetry against an MES system of record in one-minute Flink SQL tumbling windows, on MQTT, self-managed Kafka Connect and Confluent Cloud.",
+    "codeRepository": config.repo_url,
+    "programmingLanguage": ["SQL", "Python"],
+    "runtimePlatform": ["Confluent Cloud for Apache Flink", "Apache Kafka Connect", "Eclipse Mosquitto", "Streamlit"],
+    "keywords": "Flink SQL, Confluent Cloud, Kafka Connect, MQTT, Schema Registry, tumbling window, event time, ingestion time, watermark, MATCH_RECOGNIZE, IoT, reconciliation, MES",
+    "author": {"@id": "https://saqibtamli.vercel.app/#person"},
+    "url": config.site_url
+  } -%}
+
+  {%- set graph = [person, website, code] -%}
+  {%- if page and not page.is_homepage -%}
+    {%- set article = {
+      "@type": "TechArticle",
+      "@id": page_url ~ "#article",
+      "headline": page_title,
+      "description": page_desc,
+      "url": page_url,
+      "inLanguage": "en",
+      "author": {"@id": "https://saqibtamli.vercel.app/#person"},
+      "isPartOf": {"@id": config.site_url ~ "#website"},
+      "about": {"@id": config.site_url ~ "#code"}
+    } -%}
+    {%- set graph = graph + [article] -%}
+  {%- endif %}
+  <script type="application/ld+json">{{ {"@context": "https://schema.org", "@graph": graph} | tojson }}</script>
+{% endblock %}

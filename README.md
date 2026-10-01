@@ -6,7 +6,9 @@
 ![Confluent](https://img.shields.io/badge/Confluent%20Cloud-Kafka%20%7C%20Flink%20SQL-black.svg)
 ![Status](https://img.shields.io/badge/Status-Live%20Demo%20Ready-brightgreen.svg)
 
-> **Live Interactive Cloud Dashboard:** [https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/)
+> **Documentation:** [mysticbliss.github.io/iot-parts-reconciliation](https://mysticbliss.github.io/iot-parts-reconciliation/) — the build story, every SQL file explained, fault ground truth, concepts
+>
+> **Dashboard:** [iot-parts-reconciliation.streamlit.app](https://iot-parts-reconciliation-anhrfruzvzhhymc9c9mcwc.streamlit.app/) — replays the fault timetable; see the docs for how it differs from the live pipeline
 
 A stream processing pipeline that reconciles high-velocity IoT edge manufacturing counts against an enterprise Manufacturing Execution System (MES) system of record in real time.
 
@@ -20,7 +22,7 @@ In discrete manufacturing plants (such as automotive assembly lines), edge senso
 Historically (e.g. Delphi 2018), telemetry reconciliation was performed using edge MiNiFi agents, NiFi routing clusters, and micro-batch Hortonworks pipelines. This project modernizes that pattern to a cloud-native, event-driven streaming stack using **Confluent Cloud** and **Apache Flink SQL**:
 - Reconciles edge counts vs. system counts over **1-minute tumbling windows**.
 - Detects dropped pulses, multi-count miscounts, and clock drifts.
-- Evaluates the impact of edge device network drops and out-of-order event replay against Flink event-time watermarks.
+- Measures how edge network drops and buffered replay behave against the windowing clock — see §5A, which documents why windowing on Kafka ingestion time surfaces an outage as a recovery-window burst rather than as late data.
 
 ---
 
@@ -41,12 +43,12 @@ Historically (e.g. Delphi 2018), telemetry reconciliation was performed using ed
        ┌────────────────────────────────────────┴────────────────────────────────────────┐
        ▼                                                                                  ▼
 [Confluent Cloud: device_counts]                                            [Confluent Cloud: system_counts]
- (Avro / Schema Registry enforced)                                           (MES System of Record Publisher)
+ (bronze: raw delimited, schemaless)                                         (MES System of Record Publisher)
        │                                                                                  │
        └────────────────────────────────────────┬─────────────────────────────────────────┘
                                                 ▼
                                  [Confluent Cloud Flink SQL]
-                       - 1-Minute Tumbling Event-Time Window Aggregation
+                       - 1-Minute Tumbling Window on $rowtime (ingestion time)
                        - Stream-to-Stream Discrepancy Join (device_total != system_total)
                                                 │
                                                 ▼
@@ -77,14 +79,15 @@ iot-parts-reconciliation/
 ├── dashboard.py                     # Streamlit reconciliation dashboard
 ├── architecture.drawio              # HLD and LLD diagrams
 ├── CASE_STUDY.md                    # Engineering case study — decisions, tradeoffs, results
-├── LEARNING.md                      # Deep dives: MATCH_RECOGNIZE, watermarks, dashboard design
+├── LEARNING.md                      # Pointer — the deep dives now live in docs/
+├── mkdocs.yml, docs/                # Documentation site (published to GitHub Pages)
 ├── connect/
 │   └── Dockerfile                   # Connect worker image with the MQTT source plugin
 ├── mosquitto/
 │   └── config/mosquitto.conf        # Mosquitto broker configuration
 ├── connectors/
-│   ├── mqtt-source-connector.json   # MQTT -> Confluent Cloud (JSON mode)
-│   └── mqtt-source-avro-connector.json # MQTT -> Confluent Cloud (Avro mode)
+│   ├── mqtt-source-connector.json   # MQTT -> Confluent Cloud, raw bytes (deployed)
+│   └── mqtt-source-avro-connector.json # Avro alternative — reference only, needs a parsing SMT to run
 ├── schemas/
 │   └── part_event.avsc              # Avro schema for Schema Registry evolution
 ├── simulators/
@@ -178,11 +181,45 @@ streamlit run dashboard.py
 
 ## 5. Engineering Findings & Tradeoffs
 
-### A. Late Data & Watermark Boundary Behavior (Phase 6 Experiment)
-During simulated plant power outages (`python simulators/device_simulator.py --simulate-outage-device pi-03 --outage-duration 70`):
-- When machine `pi-03` dropped offline for 70 seconds and subsequently flushed its RAM buffer, events arrived with event timestamps falling outside Flink's 10-second bounded watermark (`WATERMARK FOR event_time AS event_time - INTERVAL '10' SECOND`).
-- **Observation:** Late-arriving events were discarded by Flink's stream join, resulting in apparent reconciliation deficits.
-- **Resolution & Tradeoff:** Increasing watermark tolerance to `60 SECONDS` prevented dropped records at the expense of keeping stream state in memory for an additional minute before emitting finalized window results.
+### A. Ingestion Time vs Event Time — what the outage test actually showed (Phase 6)
+
+This is the most useful thing the project taught me, and it is not what I expected to find.
+
+**Setup.** Simulate a plant network drop (`python simulators/device_simulator.py --simulate-outage-device pi-03 --outage-duration 70`): `pi-03` goes offline for 70 seconds, buffers its pulses, and flushes them on reconnect.
+
+**Expectation.** The replayed events would arrive after the watermark had advanced past their window, Flink would discard them, and the reconciliation would show a deficit for the outage minutes.
+
+**What actually happened.** A surplus in the *recovery* window, not a deficit — classified by [02_windowed_reconciliation.sql](./flink_sql/02_windowed_reconciliation.sql) as `BURST_RECOVERY`.
+
+**Why.** Every window in this project is keyed on `$rowtime` (see [01_create_tables.sql](./flink_sql/01_create_tables.sql)). Per Confluent's documentation, `$rowtime` *"is exactly the Kafka record timestamp"* — and with no timestamp SMT on the MQTT source connector, that timestamp is assigned by the Connect worker **when it publishes the record**, not when the device generated the pulse. The device's own clock reading travels in the payload as the string field `ts` and is never promoted to a time attribute.
+
+So on replay, the buffered events are stamped with *current* publish time. They are not late. They are perfectly punctual records carrying stale readings, and they aggregate into the minute the device reconnected.
+
+**The tradeoff I thought I was making, and the one I was actually making.** Widening the watermark would have changed nothing here — at any tolerance, those records are never late. The real distinction is that this is an **ingestion-time pipeline**, and ingestion time is cheap, monotonic and immune to device clock drift, at the cost of attributing late-arriving work to the wrong window. Event time would attribute it correctly, at the cost of holding window state open and trusting edge clocks.
+
+**Watermark configuration, stated plainly.** These tables run Confluent Cloud's **default** watermark strategy: applied on `$rowtime`, calculated per Kafka partition, with a fixed out-of-orderness tolerance of **180 milliseconds**. No custom watermark is declared anywhere in `flink_sql/`. Confluent exposes watermarks at table level, so tuning one here would mean:
+
+```sql
+ALTER TABLE device_counts
+  MODIFY WATERMARK FOR $rowtime AS $rowtime - INTERVAL '10' SECOND;
+```
+
+**What I would change to get true event-time semantics.** Parse `ts` into a `TIMESTAMP(3)`, declare it as the time attribute with a watermark sized to the worst tolerable edge outage, and window on that instead of `$rowtime`. Then late data genuinely crosses a watermark boundary, the deficit appears where I originally expected it, and the lag views in [06_streamlit_analytics_views.sql](./flink_sql/06_streamlit_analytics_views.sql) — which already measure the gap between `ts` and `$rowtime` — become the signal for sizing that watermark. Alternatively, a `TimestampConverter` SMT on the source connector would push the device clock into the Kafka record timestamp and leave the SQL unchanged.
+
+### C. Where the schema contract lives
+
+The edge payload is a `::`-delimited string — the same wire shape the original Delphi pipeline carried through MiNiFi and NiFi, kept so the two implementations compare on equal terms.
+
+**The edge is schemaless on purpose.** Confluent's Avro wire format puts a magic byte and a 4-byte schema ID on every record, which means the producer needs a Schema Registry connection. On machine-mounted sensors that means registry credentials at the plant edge, OT-to-cloud egress and firmware coupled to schema IDs — a poor trade for a device fleet.
+
+So the contract is enforced one hop later, which makes this medallion architecture on streams:
+
+- **Bronze** — `device_counts` and `system_counts` carry no schema. Confluent Cloud Flink infers them as `key VARBINARY, val VARBINARY` with `'value.format' = 'raw'`, so nothing at the edge can break ingestion by changing shape.
+- **Silver / gold** — `count_mismatches` is a declared `CREATE TABLE`, and per Confluent's documentation *"The CREATE TABLE statement always creates a backing Kafka topic as well as the corresponding schema subjects for key and value in Schema Registry."* Downstream consumers bind to that typed contract.
+
+The cost is that parsing lives in SQL: `MAKE_VALID_UTF8()` and `SPLIT_INDEX()` repeated across the views, with no type safety on the raw hop.
+
+**One thing that did not work, recorded because the reason matters.** A schema was registered against the raw `device_counts` subject expecting Flink to return typed columns. It stayed inert — Schema Registry is a producer-side serialization contract, not a parser, and `ByteArrayConverter` writes the payload through with no schema ID for a deserializer to key off. Swapping in `AvroConverter` alone would not fix it either: it serializes whatever structure the Connect record already has, and the MQTT source hands it a byte array, so the registered schema would be a *primitive* and Flink would return one `STRING` column holding the whole delimited payload. Structuring at the connector needs a custom SMT. [part_event.avsc](./schemas/part_event.avsc) and [mqtt-source-avro-connector.json](./connectors/mqtt-source-avro-connector.json) remain as the device-side alternative, for deployments where edge devices can legitimately hold registry credentials.
 
 ### B. Self-Managed Connect vs Managed Connect
 - **Challenge:** Confluent Cloud Managed Connectors cannot reach local or on-premise private edge brokers without complex VPC peering or reverse proxy tunnels.

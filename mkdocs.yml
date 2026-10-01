@@ -1,0 +1,160 @@
+site_name: IoT Parts Reconciliation
+site_description: >-
+  Reconciling edge sensor counts against an MES system of record in real time —
+  MQTT, self-managed Kafka Connect, Confluent Cloud and Flink SQL. What was built,
+  what broke, and why.
+site_author: Saqib Mujtaba
+site_url: https://mysticbliss.github.io/iot-parts-reconciliation/
+repo_url: https://github.com/mysticBliss/iot-parts-reconciliation
+repo_name: mysticBliss/iot-parts-reconciliation
+edit_uri: ""
+copyright: Saqib Mujtaba · 2026
+
+# Fail the strict build on broken #anchor links, not just broken pages
+validation:
+  anchors: warn
+
+theme:
+  name: material
+  custom_dir: overrides  # JSON-LD + Open Graph tags in main.html
+  language: en
+  icon:
+    logo: material/factory
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+
+extra_css:
+  - assets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - def_list
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  # Renders :material-…: / :octicons-…: icon shortcodes
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  # Code on the site is included from the real files, so it cannot drift from them.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - The Story:
+      - story/index.md
+      - "1 · The original, Delphi 2018": story/origin.md
+      - "2 · The rebuild": story/rebuild.md
+      - "3 · The outage that didn't behave": story/outage.md
+      - "4 · The schema that did nothing": story/schema.md
+      - "5 · The faults that can't fire": story/silent-faults.md
+      - "6 · Why the dashboard is a replay": story/dashboard.md
+  - How It Works:
+      - architecture/index.md
+      - Edge devices & MQTT: architecture/edge.md
+      - Kafka Connect: architecture/connect.md
+      - Confluent Cloud topics: architecture/confluent.md
+      - Flink SQL, file by file: architecture/flink-sql.md
+      - Dashboard: architecture/dashboard.md
+  - Fault Scenarios: faults.md
+  - Decisions: decisions.md
+  - Concepts:
+      - concepts/index.md
+      - "Time: event, ingestion, watermarks": concepts/time.md
+      - Windows & joins: concepts/windows-and-joins.md
+      - Schema Registry & converters: concepts/schema-registry.md
+      - Kafka Connect internals: concepts/kafka-connect.md
+      - Keys, partitions, ordering: concepts/partitioning.md
+      - MATCH_RECOGNIZE: concepts/match-recognize.md
+  - Notes to Remember: notes.md
+  - Limits & Next Steps: limitations.md
+  - Run It: running.md
+
+plugins:
+  - search
+  # /llms.txt (index) and /llms-full.txt (whole site as one markdown file) for LLM crawlers.
+  # Descriptions match each page's front-matter `description`.
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >-
+        A personal engineering project by Saqib Mujtaba (Data Platform Architect, UAE):
+        a rebuild of a 2018 Delphi IoT parts-reconciliation pipeline on MQTT, self-managed
+        Kafka Connect, Confluent Cloud and Flink SQL. The documentation records the design,
+        every SQL file, and three findings — windows on $rowtime are ingestion time, Schema
+        Registry needs a schema ID in each record, and some injected faults cannot be seen
+        by ingestion-time windows. Simulated devices, not a production deployment.
+      sections:
+        Overview:
+          - index.md: "Real-time reconciliation of IoT edge part counts against an MES system of record with MQTT, Kafka Connect, Confluent Cloud and Flink SQL — what was built and what broke."
+          - notes.md: "Short answers to the questions this streaming system raises — time semantics, schemas, joins, classification and delivery guarantees."
+        The Story:
+          - story/index.md: "Six chapters on rebuilding a 2018 IoT reconciliation pipeline on Confluent Cloud and Flink SQL, each with the one lesson worth keeping."
+          - story/origin.md: "The 2018 Delphi edge-to-core IoT pipeline on MiNiFi, NiFi and Hortonworks, and why it was rebuilt on a modern streaming stack."
+          - story/rebuild.md: "How each component — MQTT, self-managed Kafka Connect, Confluent Cloud Flink SQL, Streamlit — was chosen by where it has to run."
+          - story/outage.md: "Why a device outage produced a surplus instead of dropped late data: Flink windows on $rowtime are ingestion time, not event time."
+          - story/schema.md: "Why a Schema Registry schema on a raw-bytes topic does nothing, why AvroConverter alone doesn't help, and where the schema contract belongs."
+          - story/silent-faults.md: "Two simulated faults that ingestion-time windows cannot detect, why averaging hides clock jitter, and why reconciliation can't say which side is wrong."
+          - story/dashboard.md: "Why the public Streamlit dashboard replays the fault timetable instead of consuming Kafka, and exactly where it differs from the pipeline."
+        How It Works:
+          - architecture/index.md: "End-to-end architecture: one part pulse traced from a Raspberry Pi through MQTT, Kafka Connect and Confluent Cloud topics to Flink SQL output."
+          - architecture/edge.md: "Simulated plant topology, the ::-delimited MQTT payload, QoS 1, outage buffering, and the MES system-of-record simulator."
+          - architecture/connect.md: "Self-managed Kafka Connect in distributed mode: MQTT source config, ByteArrayConverter, MQTT-topic keys, and why not a managed connector."
+          - architecture/confluent.md: "How Confluent Cloud Flink sees raw topics, what $rowtime is, the default 180 ms watermark, and which Schema Registry subjects exist."
+          - architecture/flink-sql.md: "Every Flink SQL file explained: parsing views, tumbling-window reconciliation join, enrichment, MATCH_RECOGNIZE patterns and analytics views."
+          - architecture/dashboard.md: "The Streamlit dashboard's tabs, its data model, replay mode, and known gaps against the current pipeline."
+          - faults.md: "Ground truth for each injected fault — bounce, missed pulse, clock jitter, outage, double count — versus what each Flink SQL layer actually produces."
+          - decisions.md: "Architecture decision records for the pipeline: what was chosen, the alternatives considered, and what each choice cost."
+        Concepts:
+          - concepts/index.md: "Revision notes on the streaming concepts behind the project, each tied to where it shows up in the pipeline."
+          - concepts/time.md: "Event time vs ingestion time vs processing time, how Flink watermarks work, and Confluent Cloud's default SOURCE_WATERMARK strategy."
+          - concepts/windows-and-joins.md: "Flink SQL window TVFs (TUMBLE, HOP, CUMULATE, SESSION), and why reconciliation needs an outer join between windowed streams."
+          - concepts/schema-registry.md: "How the Schema Registry wire format and schema IDs work, Kafka Connect converters, compatibility modes, and where to enforce a data contract."
+          - concepts/kafka-connect.md: "Kafka Connect connectors, tasks, transforms and converters; distributed mode; internal topics; and end-to-end delivery guarantees."
+          - concepts/partitioning.md: "Kafka keys, partitions and ordering: how each topic is keyed, why per-device order holds, and what would break it."
+          - concepts/match-recognize.md: "Flink SQL MATCH_RECOGNIZE explained with three IoT patterns — sensor chatter, silent sensor, recovery flush — and why the ordering clock matters."
+        Operations:
+          - limitations.md: "What the project is not, known issues in the current build, and what a production deployment would need."
+          - running.md: "Step-by-step guide to running the pipeline: Confluent Cloud setup, Docker edge stack, connector deployment, simulators, Flink SQL and teardown."

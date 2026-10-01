@@ -1,0 +1,24 @@
+/* Chapter "one-line takeaway" callout used at the top of story pages */
+.md-typeset .takeaway {
+  border-left: 4px solid var(--md-accent-fg-color);
+  background: var(--md-code-bg-color);
+  padding: 0.8rem 1rem;
+  margin: 1.2rem 0;
+  font-size: 0.95em;
+}
+.md-typeset .takeaway strong:first-child {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-accent-fg-color);
+  margin-bottom: 0.2rem;
+}
+
+/* Keep wide tables readable on phones */
+.md-typeset table:not([class]) {
+  font-size: 0.72rem;
+}
+.md-typeset .md-typeset__table {
+  overflow-x: auto;
+}

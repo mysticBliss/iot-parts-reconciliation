@@ -29,10 +29,25 @@ WHERE device_id IN ('pi-03', 'pi-09')  -- pi-03 has outage at MM:35, pi-09 has j
 
 
 -- -----------------------------------------------------------------------------
--- Experiment 2: Strict Watermark (5s) Aggregation vs Delayed Burst
+-- Experiment 2: What a buffered replay does to the windows
 -- -----------------------------------------------------------------------------
--- With a standard low-latency 5s watermark, late-arriving events (>5s older than
--- highest watermark seen) are ignored in window calculations.
+-- NOTE ON WATERMARKS. No custom watermark is declared anywhere in this project.
+-- These views window on `event_time`, which is aliased from `$rowtime` -- per
+-- Confluent's docs, "exactly the Kafka record timestamp". The tables therefore run
+-- the default strategy: per Kafka partition, 180 ms out-of-orderness tolerance.
+--
+-- Because the MQTT source connector applies no timestamp SMT, that stamp is set
+-- when Connect PUBLISHES the record, not when the device generated the pulse. So a
+-- 70-second buffered replay arrives with current timestamps: never late, at any
+-- tolerance, and aggregated into the window of the minute the device reconnected.
+-- Expect a BURST_RECOVERY surplus at MM:37, NOT a late-data deficit at MM:35-36.
+--
+-- To make this a true event-time experiment: parse `ts` into TIMESTAMP(3), declare
+-- it as the time attribute with a watermark, and window on that instead. Confluent
+-- exposes watermarks at table level only:
+--   ALTER TABLE device_counts
+--     MODIFY WATERMARK FOR $rowtime AS $rowtime - INTERVAL '10' SECOND;
+--
 -- Watch minute 35-37 on pi-03:
 SELECT
     window_start,
